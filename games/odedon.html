@@ -1,0 +1,332 @@
+<!doctype html><html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif}[hidden]{display:none!important}</style></head><body>
+<title>おでこでドン！</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Dela+Gothic+One&family=M+PLUS+Rounded+1c:wght@500;800&display=swap">
+<style>
+/* Layout: one-screen game app — setup → ready → play (full-bleed word) → turn result → standings */
+:root{
+  --bg:#1f3fd6;        /* game-show cobalt */
+  --bg-deep:#152c9e;
+  --ink:#ffffff;
+  --muted:#b9c6ff;
+  --sun:#ffd23f;       /* highlight / CTA */
+  --ok:#1fc77a;
+  --pass:#ff7a3d;
+  --card:#ffffff;
+  --card-ink:#14205e;
+  --display:"Dela Gothic One","Hiragino Sans","Yu Gothic",system-ui,sans-serif;
+  --body:"M PLUS Rounded 1c","Hiragino Maru Gothic ProN","Hiragino Sans",system-ui,sans-serif;
+  color-scheme:dark;
+}
+html,body{height:100%}
+body{background:var(--bg);color:var(--ink);font-family:var(--body);font-weight:500;overflow:hidden;
+  -webkit-tap-highlight-color:transparent;user-select:none;-webkit-user-select:none}
+button{font:inherit;cursor:pointer}
+button:focus-visible,input:focus-visible{outline:3px solid var(--sun);outline-offset:2px}
+.screen{position:absolute;inset:0;display:flex;flex-direction:column;overflow-y:auto;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));
+  padding-block:max(16px,env(safe-area-inset-top,0px)) max(16px,env(safe-area-inset-bottom,0px))}
+.wrap{width:100%;max-width:560px;margin:0 auto;display:flex;flex-direction:column;gap:20px}
+h1{font-family:var(--display);font-weight:400;font-size:clamp(2.2rem,9vw,3.4rem);line-height:1.05;margin:8px 0 0;
+  color:var(--sun);text-wrap:balance;letter-spacing:.02em}
+.back{align-self:flex-start;font-size:12px;font-weight:800;letter-spacing:.06em;color:var(--muted);text-decoration:none;padding:2px 0}
+.lead{color:var(--muted);margin:0;line-height:1.7}
+.label{font-size:.78rem;letter-spacing:.12em;color:var(--muted);margin:0 0 8px;font-weight:800}
+.players{display:flex;flex-direction:column;gap:8px}
+.prow{display:flex;gap:8px;align-items:center}
+.prow input{flex:1;min-width:0;font:inherit;font-size:1rem;padding:12px 14px;border-radius:12px;border:2px solid transparent;
+  background:var(--bg-deep);color:var(--ink)}
+.prow input:focus{border-color:var(--sun);outline:none}
+.icon-btn{width:44px;height:44px;border-radius:12px;border:0;background:var(--bg-deep);color:var(--muted);font-size:1.3rem}
+.ghost{border:2px dashed var(--muted);background:none;color:var(--muted);padding:10px;border-radius:12px;font-weight:800}
+.chips{display:flex;flex-wrap:wrap;gap:8px}
+.chip{border:0;padding:10px 14px;border-radius:999px;background:var(--bg-deep);color:var(--ink);font-weight:800;font-size:.95rem}
+.chip[aria-pressed="true"]{background:var(--sun);color:var(--card-ink)}
+.cta{border:0;background:var(--sun);color:var(--card-ink);font-family:var(--display);font-size:1.4rem;padding:18px;border-radius:16px;
+  box-shadow:0 6px 0 #c99a00;transition:transform .08s}
+.cta:active{transform:translateY(4px);box-shadow:0 2px 0 #c99a00}
+.sub{border:0;background:none;color:var(--muted);text-decoration:underline;padding:8px;font-weight:800}
+.howto{background:var(--bg-deep);border-radius:16px;padding:14px 16px;line-height:1.7;font-size:.92rem;color:var(--muted)}
+.howto b{color:var(--ink)}
+
+/* ready */
+#ready{align-items:center;justify-content:center;text-align:center}
+#ready .who{font-family:var(--display);font-size:clamp(2rem,10vmin,4rem);color:var(--sun);margin:0}
+#ready .tapzone{border:0;background:none;color:var(--ink);position:absolute;inset:0;width:100%}
+.count{font-family:var(--display);font-size:40vmin;color:var(--sun);line-height:1}
+
+/* play */
+#play{padding:0;overflow:hidden}
+.zones{position:absolute;inset:0;display:grid;grid-template-columns:1fr 1fr}
+.zone{border:0;background:transparent;color:transparent}
+.hint{position:absolute;bottom:max(12px,env(safe-area-inset-bottom,0px));font-weight:800;font-size:.85rem;opacity:.7;pointer-events:none}
+.hint.l{left:max(16px,env(safe-area-inset-left,0px));color:var(--pass)}
+.hint.r{right:max(16px,env(safe-area-inset-right,0px));color:var(--ok)}
+.timer{position:absolute;top:max(12px,env(safe-area-inset-top,0px));left:50%;transform:translateX(-50%);
+  font-family:var(--display);font-size:clamp(1.4rem,7vmin,2.6rem);color:var(--sun);pointer-events:none;font-variant-numeric:tabular-nums}
+.timer.low{color:var(--pass)}
+.bar{position:absolute;left:0;top:0;height:6px;background:var(--sun);pointer-events:none;transition:width 1s linear}
+.word{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;text-align:center;pointer-events:none;
+  padding:0 max(24px,env(safe-area-inset-right,0px)) 0 max(24px,env(safe-area-inset-left,0px))}
+.word span{font-family:var(--display);font-size:clamp(2.4rem,15vmin,9rem);line-height:1.15;text-wrap:balance;word-break:keep-all;overflow-wrap:anywhere}
+.cat{position:absolute;top:max(18px,env(safe-area-inset-top,0px));left:max(16px,env(safe-area-inset-left,0px));color:var(--muted);font-weight:800;font-size:.85rem;pointer-events:none}
+.quit{position:absolute;top:max(10px,env(safe-area-inset-top,0px));right:max(10px,env(safe-area-inset-right,0px));z-index:3;
+  border:0;background:var(--bg-deep);color:var(--muted);border-radius:10px;padding:8px 12px;font-weight:800;font-size:.8rem}
+.flash{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-family:var(--display);
+  font-size:clamp(3rem,22vmin,12rem);pointer-events:none;opacity:0}
+.flash.show{animation:fl .55s ease-out}
+@keyframes fl{0%{opacity:1}70%{opacity:1}100%{opacity:0}}
+#play.ok{background:var(--ok)} #play.pass{background:var(--pass)}
+#play{transition:background .15s}
+
+/* result */
+.score{font-family:var(--display);font-size:clamp(4rem,22vw,7rem);color:var(--sun);line-height:1;margin:0}
+.list{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:6px}
+.list li{display:flex;gap:10px;align-items:center;background:var(--bg-deep);border-radius:10px;padding:10px 12px;font-weight:800}
+.mark{width:28px;height:28px;flex:none;border-radius:50%;display:grid;place-items:center;font-size:.9rem;color:var(--card-ink)}
+.mark.o{background:var(--ok)} .mark.x{background:var(--pass)}
+.list li.pass span:last-child{color:var(--muted);font-weight:500}
+.board{display:flex;flex-direction:column;gap:8px}
+.brow{display:grid;grid-template-columns:36px 1fr auto;gap:10px;align-items:center;background:var(--card);color:var(--card-ink);
+  border-radius:14px;padding:12px 14px;font-weight:800}
+.brow .rank{font-family:var(--display);font-size:1.3rem}
+.brow .pts{font-family:var(--display);font-size:1.5rem;font-variant-numeric:tabular-nums}
+.brow.top{background:var(--sun)}
+.brow .rounds{font-size:.78rem;color:#5a6390;font-weight:500}
+.row-btns{display:flex;flex-direction:column;gap:10px}
+#app{position:fixed;inset:0;overflow:hidden}
+#app.rot{inset:auto;top:0;left:0;width:100vh;height:100vw;width:100dvh;height:100dvw;transform-origin:top left;transform:rotate(90deg) translateY(-100%)}
+@media (prefers-reduced-motion:reduce){.flash.show{animation:none;opacity:1}.bar{transition:none}}
+</style>
+
+<div id="app">
+<!-- SETUP -->
+<section class="screen" id="setup">
+  <div class="wrap">
+    <a href="../" class="back">← あそびの棚</a>
+    <h1>おでこでドン！</h1>
+    <p class="lead">スマホ1台をみんなで回して遊ぶ、お題当てゲーム。</p>
+
+    <div>
+      <p class="label">プレイヤー</p>
+      <div class="players" id="players"></div>
+      <div style="margin-top:8px"><button class="ghost" id="addP" style="width:100%">＋ プレイヤーを追加</button></div>
+    </div>
+
+    <div>
+      <p class="label">お題のジャンル</p>
+      <div class="chips" id="cats"></div>
+    </div>
+
+    <div>
+      <p class="label">制限時間</p>
+      <div class="chips" id="times"></div>
+    </div>
+
+    <div>
+      <p class="label">画面の向き</p>
+      <div class="chips" id="rots"></div>
+      <p class="lead" style="font-size:.85rem;margin-top:8px">回転しないときは「縦のまま横向き表示」を選ぶと、プレイ中だけ画面の中身が90度回ります。</p>
+    </div>
+
+    <div class="howto">
+      <b>遊び方</b><br>
+      ① 回答する人はスマホを横向きにしておでこに当てる<br>
+      ② ほかの人がお題を見てヒントを出す<br>
+      ③ 当たったら<b>画面の右半分</b>、パスは<b>左半分</b>をタップ<br>
+      ④ 時間切れで次の人へスマホを渡す
+    </div>
+
+    <button class="cta" id="start">ゲームスタート</button>
+  </div>
+</section>
+
+<!-- READY -->
+<section class="screen" id="ready" hidden>
+  <div class="wrap" style="align-items:center" id="readyBody">
+    <p class="label" id="roundLbl">1周目</p>
+    <p class="who" id="whoName">プレイヤー1</p>
+    <p class="lead">スマホを横向きにしておでこへ。<br>準備ができたら画面をタップ！</p>
+  </div>
+  <div class="count" id="countNum" hidden>3</div>
+  <button class="tapzone" id="readyTap" aria-label="スタート"></button>
+</section>
+
+<!-- PLAY -->
+<section class="screen" id="play" hidden>
+  <div class="bar" id="bar"></div>
+  <div class="cat" id="catLbl"></div>
+  <div class="timer" id="timer">60</div>
+  <div class="word"><span id="word">お題</span></div>
+  <div class="flash" id="flash"></div>
+  <div class="zones">
+    <button class="zone" id="zPass" aria-label="パス"></button>
+    <button class="zone" id="zOk" aria-label="正解"></button>
+  </div>
+  <span class="hint l">← パス</span>
+  <span class="hint r">正解 →</span>
+  <button class="quit" id="quit">やめる</button>
+</section>
+
+<!-- RESULT -->
+<section class="screen" id="result" hidden>
+  <div class="wrap">
+    <p class="label" id="resWho">プレイヤー1 の結果</p>
+    <p class="score"><span id="resScore">0</span><span style="font-size:.35em;color:var(--ink)"> 問正解</span></p>
+    <ul class="list" id="resList"></ul>
+    <button class="cta" id="next">次の人へ</button>
+  </div>
+</section>
+
+<!-- STANDINGS -->
+<section class="screen" id="stand" hidden>
+  <div class="wrap">
+    <h1 id="standTitle">1周目おわり！</h1>
+    <div class="board" id="board"></div>
+    <div class="row-btns">
+      <button class="cta" id="again">もう1周</button>
+      <button class="sub" id="toSetup">設定にもどる（スコアはリセット）</button>
+    </div>
+  </div>
+</section>
+</div>
+
+<script>
+const WORDS={
+ "動物":["キリン","ペンギン","パンダ","カンガルー","ゾウ","コアラ","ライオン","カバ","ナマケモノ","フラミンゴ","ハリネズミ","ラッコ","カメレオン","ゴリラ","シマウマ","タコ","クラゲ","カピバラ","フクロウ","ワニ","アルパカ","イルカ","カブトムシ","リス","ハムスター","サメ","ウサギ","ヒツジ","ニワトリ","オオカミ","トラ","チーター","クマ","シロクマ","サル","ブタ","ウシ","ウマ","ヤギ","ラクダ","カエル","ヘビ","カメ","クジラ","アザラシ","セイウチ","ペリカン","クジャク","オウム","カラス","スズメ","ハト","ツル","コウモリ","モグラ","タヌキ","キツネ","アライグマ","ビーバー","カタツムリ","チョウチョ","トンボ","セミ","ホタル","クワガタ","アリ","ハチ","カニ","エビ","イカ","ヒトデ","マンボウ","チンアナゴ","ダチョウ","オランウータン"],
+ "食べ物":["ラーメン","たこ焼き","お寿司","カレーライス","おにぎり","すき焼き","ハンバーガー","パフェ","納豆","餃子","天ぷら","焼きそば","メロンパン","ショートケーキ","お好み焼き","牛丼","から揚げ","味噌汁","うどん","プリン","焼き芋","ピザ","かき氷","チョコレート","梅干し","おでん","オムライス","バナナ","スイカ","もち","そば","しゃぶしゃぶ","焼き肉","焼き鳥","とんかつ","エビフライ","コロッケ","ハンバーグ","ナポリタン","チャーハン","麻婆豆腐","肉じゃが","親子丼","うな重","茶碗蒸し","冷やし中華","たい焼き","どら焼き","だんご","大福","せんべい","ポテトチップス","ポップコーン","ソフトクリーム","ドーナツ","ホットケーキ","クレープ","マカロン","わたあめ","りんご飴","カップラーメン","食パン","目玉焼き","ゆで卵","ナス","トマト","キャベツ","にんじん","ピーマン","ブロッコリー","イチゴ","ミカン","メロン","パイナップル","さくらんぼ","ぶどう","桃","レモン","アボカド","豆腐"],
+ "職業":["消防士","パイロット","美容師","お医者さん","警察官","パン屋さん","宇宙飛行士","先生","漁師","マジシャン","ピアニスト","料理人","大工","保育士","歯医者さん","バスの運転手","郵便屋さん","農家","探偵","カメラマン","お笑い芸人","忍者","アナウンサー","花屋さん","獣医","スポーツ選手","漫画家","建築家","駅員さん","落語家","看護師","薬剤師","弁護士","裁判官","社長","政治家","画家","歌手","俳優","声優","ユーチューバー","プログラマー","デザイナー","モデル","CA（客室乗務員）","タクシー運転手","電車の運転士","寿司職人","ケーキ屋さん","ラーメン屋さん","コンビニ店員","銀行員","魔法使い","海賊","王様","お姫様","サンタクロース","占い師","ツアーガイド","ダンサー","指揮者","審判","自衛官","船長","庭師","清掃員","研究者","気象予報士","通訳","作家","ホテルマン","ベビーシッター","引っ越し屋さん","警備員","ピエロ"],
+ "スポーツ":["サッカー","野球","水泳","バスケットボール","卓球","相撲","スキー","テニス","マラソン","ボウリング","ゴルフ","柔道","バレーボール","スケートボード","サーフィン","ボクシング","フィギュアスケート","弓道","ラグビー","バドミントン","ドッジボール","綱引き","ダンス","ヨガ","剣道","カーリング","スカイダイビング","釣り","ボルダリング","空手","レスリング","フェンシング","アーチェリー","射撃","重量挙げ","体操","新体操","トランポリン","陸上競技","走り幅跳び","棒高跳び","ハンマー投げ","やり投げ","ハードル","リレー","競泳","飛び込み","アーティスティックスイミング","水球","カヌー","ボート","ヨット","スノーボード","ジャンプ（スキー）","スピードスケート","アイスホッケー","ボブスレー","ハンドボール","ソフトボール","アメリカンフットボール","ビーチバレー","自転車競技","F1","競馬","ゲートボール","ビリヤード","ダーツ","けん玉","乗馬","登山","ジョギング","筋トレ","ブレイクダンス","パラグライダー","バンジージャンプ"],
+ "日本の名所":["富士山","東京タワー","金閣寺","大仏","スカイツリー","清水寺","厳島神社","姫路城","温泉","沖縄","北海道","渋谷のスクランブル交差点","雷門","大阪城","鳥取砂丘","奈良の鹿","原爆ドーム","白川郷","伏見稲荷","道頓堀","屋久島","日光東照宮","上野動物園","築地","横浜中華街","草津温泉","伊勢神宮","松島","桜島","銀閣寺","出雲大社","熊本城","名古屋城","首里城","通天閣","秋葉原","原宿","浅草","お台場","鎌倉","箱根","軽井沢","京都","札幌時計台","函館の夜景","富良野のラベンダー畑","知床","十和田湖","華厳の滝","東京駅","国会議事堂","皇居","明治神宮","旭山動物園","美ら海水族館","別府温泉","道後温泉","鳴門の渦潮","阿蘇山","高千穂峡","天橋立","兼六園","黒部ダム","尾瀬","日本三景","さっぽろ雪まつり","USJ","千葉","成田空港","九十九里浜"],
+ "動作":["歯みがき","くしゃみ","縄跳び","料理","電話","ラジオ体操","居眠り","ギター演奏","傘をさす","雪合戦","腕相撲","自撮り","掃除機","洗濯物を干す","ウインク","バンザイ","ラーメンをすする","風船をふくらます","じゃんけん","スキップ","お辞儀","指笛","あくび","髪を乾かす","魚釣り","ハイタッチ","土下座","拍手","水を飲む","ドラムをたたく","ピアノを弾く","バイオリンを弾く","カラオケで歌う","ボールを投げる","バットを振る","ゴルフのスイング","泳ぐ","スキーで滑る","自転車をこぐ","車を運転する","電車のつり革につかまる","化粧をする","ネクタイを締める","ひげをそる","靴ひもを結ぶ","お風呂に入る","目薬をさす","鼻をかむ","しゃっくり","ストレッチ","腕立て伏せ","腹筋","おにぎりを握る","卵を割る","包丁で切る","フライパンを振る","ピザ生地を回す","かき氷を食べて頭が痛い","熱いものを食べる","すっぱいものを食べる","忍び足","ロボットのまね","ゴリラのまね","ゾンビ歩き","ムーンウォーク","マラソンのゴール","敬礼","祈る","手を洗う","テレビのリモコンを探す","寝坊して慌てる","写真を撮る","スマホをいじる","パソコンのキーボードを打つ","手紙を書く"],
+ "乗り物":["新幹線","飛行機","ヘリコプター","救急車","消防車","パトカー","タクシー","バス","トラック","ショベルカー","ブルドーザー","クレーン車","ゴミ収集車","自転車","一輪車","バイク","スクーター","電車","地下鉄","モノレール","ロープウェイ","ケーブルカー","観覧車","ジェットコースター","メリーゴーランド","フェリー","豪華客船","潜水艦","ヨット","カヌー","ボート","気球","ロケット","UFO","人力車","馬車","そり","スケートボード","キックボード","三輪車","ベビーカー","車いす","リムジン","オープンカー","キャンピングカー","レーシングカー","トロッコ","SL（蒸気機関車）","戦車","ジェットスキー"],
+ "家にあるもの":["冷蔵庫","電子レンジ","炊飯器","洗濯機","掃除機","テレビ","エアコン","扇風機","こたつ","ストーブ","ドライヤー","歯ブラシ","トイレットペーパー","ティッシュ","鏡","時計","目覚まし時計","カレンダー","ソファ","ベッド","まくら","布団","カーテン","じゅうたん","本棚","机","いす","ゴミ箱","傘","スリッパ","靴","メガネ","リモコン","スマホ","パソコン","電卓","ハサミ","のり","セロハンテープ","ホッチキス","消しゴム","鉛筆","ほうき","ちりとり","ぞうきん","やかん","フライパン","包丁","まな板","おたま","しゃもじ","箸","お皿","マグカップ","ハンガー","洗濯ばさみ","電球","コンセント","鍵","財布","カバン","帽子","マフラー","手袋","体温計","絆創膏","爪切り","耳かき","孫の手"],
+ "季節・行事":["お正月","お年玉","初詣","おせち料理","年賀状","節分","豆まき","バレンタインデー","ひな祭り","ホワイトデー","卒業式","入学式","お花見","こどもの日","こいのぼり","母の日","父の日","梅雨","七夕","夏休み","海水浴","花火大会","盆踊り","お盆","夏祭り","すいか割り","肝試し","運動会","お月見","ハロウィン","紅葉狩り","七五三","クリスマス","サンタクロース","大掃除","年越しそば","除夜の鐘","大晦日","雪だるま","かまくら","スキー旅行","誕生日","結婚式","修学旅行","遠足","文化祭","成人式","ゴールデンウィーク","お中元","お歳暮","衣替え","台風","桜","ひまわり","紅葉","雪","虹","かき氷屋さん","焼き芋屋さん","流しそうめん"],
+ "いろいろ":["ロボット","おばけ","宝くじ","遊園地","カラオケ","信号機","エレベーター","エスカレーター","トランプ","風鈴","鬼","お化け屋敷","ピラミッド","自由の女神","エッフェル塔","万里の長城","宇宙","月","太陽","星座","流れ星","地球儀","恐竜","マンモス","ドラゴン","人魚","ユニコーン","天使","悪魔","魔法のじゅうたん","宝箱","海賊船","お城","無人島","火山","砂漠","ジャングル","南極","北極","オーロラ","地震","雷","竜巻","筋肉","ダイエット","寝ぐせ","しゃっくり","迷子","寝言","いびき","金縛り","デジャブ","うそ","秘密","ひとめぼれ","失恋","サプライズ","じゃんけん","あっち向いてホイ","だるまさんがころんだ","かくれんぼ","鬼ごっこ","かるた","すごろく","福笑い","けん玉","コマ","折り紙","シャボン玉","ガチャガチャ","UFOキャッチャー","プリクラ","自動販売機","コンビニ","100円ショップ","ATM","QRコード","Wi-Fi","充電切れ"]
+};
+const CATS=["ぜんぶ",...Object.keys(WORDS)];
+const TIMES=[30,60,90];
+const $=id=>document.getElementById(id);
+const S={players:["プレイヤー1","プレイヤー2","プレイヤー3","プレイヤー4"],cat:"ぜんぶ",time:60,rot:false,screen:"setup",
+  totals:[],turn:0,round:1,deck:[],log:[],left:0,tick:null,current:"",currentCat:"",lock:false};
+
+try{const s=JSON.parse(localStorage.getItem("odedon")||"null");if(s){S.players=s.players||S.players;S.cat=s.cat||S.cat;S.time=s.time||S.time;S.rot=!!s.rot}}catch(e){}
+function save(){try{localStorage.setItem("odedon",JSON.stringify({players:S.players,cat:S.cat,time:S.time,rot:S.rot}))}catch(e){}}
+
+function show(id){S.screen=id;["setup","ready","play","result","stand"].forEach(s=>$(s).hidden=s!==id);applyRot()}
+function applyRot(){
+  const portrait=window.innerHeight>window.innerWidth;
+  $("app").classList.toggle("rot",S.rot&&portrait&&(S.screen==="ready"||S.screen==="play"));
+}
+window.addEventListener("resize",applyRot);
+
+function renderPlayers(){
+  const box=$("players");box.innerHTML="";
+  S.players.forEach((n,i)=>{
+    const r=document.createElement("div");r.className="prow";
+    r.innerHTML=`<input id="p${i}" maxlength="12" value="${n.replace(/"/g,"&quot;")}" aria-label="プレイヤー${i+1}の名前"><button class="icon-btn" aria-label="削除">×</button>`;
+    r.querySelector("input").oninput=e=>{S.players[i]=e.target.value;save()};
+    r.querySelector("button").onclick=()=>{if(S.players.length>2){S.players.splice(i,1);renderPlayers();save()}};
+    box.appendChild(r);
+  });
+  $("addP").hidden=S.players.length>=8;
+}
+function renderChips(boxId,items,cur,fmt,set){
+  const box=$(boxId);box.innerHTML="";
+  items.forEach(v=>{const b=document.createElement("button");b.className="chip";b.textContent=fmt(v);
+    b.setAttribute("aria-pressed",v===cur);b.onclick=()=>{set(v);save();renderAll()};box.appendChild(b)});
+}
+function renderAll(){
+  renderPlayers();
+  renderChips("cats",CATS,S.cat,v=>v,v=>S.cat=v);
+  renderChips("times",TIMES,S.time,v=>v+"秒",v=>S.time=v);
+  renderChips("rots",[false,true],S.rot,v=>v?"縦のまま横向き表示":"スマホの回転にまかせる",v=>S.rot=v);
+}
+$("addP").onclick=()=>{S.players.push("プレイヤー"+(S.players.length+1));renderPlayers();save()};
+
+function shuffle(a){for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]]}return a}
+function buildDeck(){
+  const keys=S.cat==="ぜんぶ"?Object.keys(WORDS):[S.cat];
+  const seen=new Set();S.deck=shuffle(keys.flatMap(k=>WORDS[k].map(w=>({w,k}))).filter(c=>!seen.has(c.w)&&seen.add(c.w)));
+}
+function draw(){if(!S.deck.length)buildDeck();return S.deck.pop()}
+
+let wake=null;
+async function keepAwake(){try{if(navigator.wakeLock&&!wake){wake=await navigator.wakeLock.request("screen");wake.addEventListener("release",()=>wake=null)}}catch(e){}}
+
+$("start").onclick=()=>{
+  S.players=S.players.map((n,i)=>n.trim()||"プレイヤー"+(i+1));save();
+  S.totals=S.players.map(()=>0);S.turn=0;S.round=1;buildDeck();keepAwake();toReady();
+};
+function toReady(){
+  $("whoName").textContent=S.players[S.turn]+" の番";
+  $("roundLbl").textContent=S.round+"周目　"+(S.turn+1)+" / "+S.players.length+"人目";
+  $("readyBody").hidden=false;$("countNum").hidden=true;$("readyTap").hidden=false;show("ready");
+}
+$("readyTap").onclick=()=>{
+  $("readyTap").hidden=true;$("readyBody").hidden=true;$("countNum").hidden=false;
+  let n=3;$("countNum").textContent=n;beep(520);
+  const t=setInterval(()=>{n--;if(n>0){$("countNum").textContent=n;beep(520)}else{clearInterval(t);startTurn()}},800);
+};
+
+function startTurn(){
+  S.log=[];S.left=S.time;S.lock=false;show("play");$("play").className="screen";
+  next();updTimer();beep(880);
+  S.tick=setInterval(()=>{S.left--;updTimer();if(S.left<=5&&S.left>0)beep(660);if(S.left<=0)endTurn()},1000);
+}
+function updTimer(){
+  $("timer").textContent=S.left;$("timer").classList.toggle("low",S.left<=10);
+  $("bar").style.width=(S.left/S.time*100)+"%";
+}
+function next(){const c=draw();S.current=c.w;S.currentCat=c.k;$("word").textContent=c.w;$("catLbl").textContent=c.k}
+function judge(ok){
+  if(S.lock||$("play").hidden)return;S.lock=true;
+  S.log.push({w:S.current,ok});
+  const p=$("play"),f=$("flash");p.className="screen "+(ok?"ok":"pass");
+  f.textContent=ok?"正解！":"パス";f.classList.remove("show");void f.offsetWidth;f.classList.add("show");
+  $("word").textContent="";
+  try{navigator.vibrate&&navigator.vibrate(ok?60:[30,40,30])}catch(e){}
+  beep(ok?1046:330);
+  setTimeout(()=>{if($("play").hidden)return;p.className="screen";next();S.lock=false},600);
+}
+$("zOk").onclick=()=>judge(true);
+$("zPass").onclick=()=>judge(false);
+document.addEventListener("keydown",e=>{if($("play").hidden)return;if(e.key==="ArrowRight")judge(true);if(e.key==="ArrowLeft")judge(false)});
+$("quit").onclick=()=>{clearInterval(S.tick);show("setup");renderAll()};
+
+function endTurn(){
+  clearInterval(S.tick);beep(220,.5);
+  const sc=S.log.filter(x=>x.ok).length;S.totals[S.turn]+=sc;
+  $("resWho").textContent=S.players[S.turn]+" の結果";$("resScore").textContent=sc;
+  const ul=$("resList");ul.innerHTML="";
+  if(!S.log.length)ul.innerHTML='<li><span>答えたお題はありませんでした</span></li>';
+  S.log.forEach(x=>{const li=document.createElement("li");if(!x.ok)li.className="pass";
+    li.innerHTML=`<span class="mark ${x.ok?"o":"x"}">${x.ok?"○":"×"}</span><span></span>`;li.lastChild.textContent=x.w;ul.appendChild(li)});
+  $("next").textContent=S.turn+1<S.players.length?S.players[S.turn+1]+" へ渡す":"順位を見る";
+  show("result");
+}
+$("next").onclick=()=>{S.turn++;if(S.turn<S.players.length)toReady();else standings()};
+
+function standings(){
+  $("standTitle").textContent=S.round+"周目おわり！";
+  const order=S.players.map((n,i)=>({n,p:S.totals[i]})).sort((a,b)=>b.p-a.p);
+  const b=$("board");b.innerHTML="";let rank=0,prev=null;
+  order.forEach((o,i)=>{if(o.p!==prev){rank=i+1;prev=o.p}
+    const r=document.createElement("div");r.className="brow"+(rank===1?" top":"");
+    r.innerHTML=`<span class="rank">${rank}</span><span></span><span class="pts">${o.p}</span>`;r.children[1].textContent=o.n;b.appendChild(r)});
+  show("stand");
+}
+$("again").onclick=()=>{S.round++;S.turn=0;toReady()};
+$("toSetup").onclick=()=>{show("setup");renderAll()};
+
+let ac=null;
+function beep(f,d=.12){try{ac=ac||new (window.AudioContext||window.webkitAudioContext)();
+  const o=ac.createOscillator(),g=ac.createGain();o.type="square";o.frequency.value=f;g.gain.value=.06;
+  o.connect(g);g.connect(ac.destination);o.start();g.gain.exponentialRampToValueAtTime(.0001,ac.currentTime+d);o.stop(ac.currentTime+d)}catch(e){}}
+
+document.addEventListener("visibilitychange",()=>{if(!document.hidden&&!$("play").hidden)keepAwake()});
+renderAll();
+</script>
+
+</body></html>
