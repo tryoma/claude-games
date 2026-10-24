@@ -1,0 +1,242 @@
+<!doctype html><html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif}img{max-width:100%}[hidden]{display:none!important}</style></head><body>
+<title>ワードウルフ</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Dela+Gothic+One&family=Zen+Maru+Gothic:wght@500;700;900&display=swap">
+<style>
+/* Layout: one-column phone stage under a night sky; a lantern-amber accent marks the one action per screen */
+:root{
+  --night:#141826; --panel:#1f2538; --line:#323a55; --ink:#f3ecdf; --dim:#a9a6b8;
+  --lantern:#f2a33a; --lantern-ink:#2a1a05; --wolf:#e2574c; --village:#6cc3a0;
+  --display:"Dela Gothic One","Hiragino Sans","Yu Gothic",sans-serif;
+  --body:"Zen Maru Gothic","Hiragino Maru Gothic ProN","Yu Gothic",sans-serif;
+  color-scheme:dark;
+}
+html,body{height:100%}
+body{background:var(--night);color:var(--ink);font-family:var(--body);font-size:16px;line-height:1.6;
+  background-image:radial-gradient(circle at 85% 6%,rgba(242,163,58,.18) 0,transparent 140px);
+  background-attachment:fixed}
+.wrap{max-width:460px;margin:0 auto;min-height:100%;display:flex;flex-direction:column;gap:20px;
+  padding-block:24px 32px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));box-sizing:border-box}
+h1{font-family:var(--display);font-weight:400;font-size:2.4rem;line-height:1.1;margin:0;letter-spacing:.02em}
+h2{font-family:var(--display);font-weight:400;font-size:1.6rem;line-height:1.25;margin:0;text-wrap:balance}
+.lede{color:var(--dim);margin:0}
+.moon{display:inline-block;width:.8em;height:.8em;border-radius:50%;background:var(--lantern);box-shadow:-.18em 0 0 0 var(--night) inset;vertical-align:.05em;margin-left:.15em}
+.screen{display:flex;flex-direction:column;gap:20px;flex:1}
+.field{display:flex;flex-direction:column;gap:8px}
+.label{font-size:.8rem;letter-spacing:.12em;color:var(--dim);font-weight:700}
+.stepper{display:flex;align-items:center;gap:12px}
+.stepper output{font-family:var(--display);font-size:1.8rem;min-width:3ch;text-align:center;font-variant-numeric:tabular-nums}
+.round{width:48px;height:48px;border-radius:50%;border:2px solid var(--line);background:var(--panel);color:var(--ink);font-size:1.4rem;cursor:pointer}
+.names{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.names input{min-width:0;font:inherit;padding:10px 12px;border-radius:10px;border:2px solid var(--line);background:var(--panel);color:var(--ink)}
+.names input:focus{outline:none;border-color:var(--lantern)}
+.chips{display:flex;gap:8px;flex-wrap:wrap}
+.chip{font:inherit;font-weight:700;padding:8px 16px;border-radius:999px;border:2px solid var(--line);background:transparent;color:var(--ink);cursor:pointer}
+.chip[aria-pressed="true"]{background:var(--ink);color:var(--night);border-color:var(--ink)}
+.btn{font-family:var(--body);font-weight:900;font-size:1.15rem;padding:18px;border-radius:16px;border:0;background:var(--lantern);color:var(--lantern-ink);cursor:pointer;width:100%}
+.btn.ghost{background:transparent;color:var(--ink);border:2px solid var(--line);font-weight:700;font-size:1rem;padding:14px}
+.btn:focus-visible,.round:focus-visible,.chip:focus-visible,.pick:focus-visible{outline:3px solid var(--ink);outline-offset:3px}
+.spacer{flex:1}
+.card{background:var(--panel);border:2px solid var(--line);border-radius:20px;padding:28px 20px;text-align:center;display:flex;flex-direction:column;gap:12px;align-items:center}
+.who{font-family:var(--display);font-size:2.2rem;line-height:1.2;word-break:break-all}
+.topic{font-family:var(--display);font-size:3rem;line-height:1.15;color:var(--lantern);word-break:break-all}
+.small{font-size:.9rem;color:var(--dim);margin:0}
+.timer{font-family:var(--display);font-size:5.5rem;line-height:1;text-align:center;font-variant-numeric:tabular-nums}
+.timer.low{color:var(--wolf)}
+.bar{height:8px;border-radius:4px;background:var(--line);overflow:hidden}
+.bar i{display:block;height:100%;background:var(--lantern);transition:width 1s linear}
+.hints{margin:0;padding-left:1.2em;color:var(--dim);display:flex;flex-direction:column;gap:4px}
+.picks{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.pick{font:inherit;font-weight:700;font-size:1.05rem;padding:16px 8px;border-radius:14px;border:2px solid var(--line);background:var(--panel);color:var(--ink);cursor:pointer;word-break:break-all}
+.verdict{font-family:var(--display);font-size:2.4rem;line-height:1.15;text-align:center}
+.verdict.w{color:var(--wolf)} .verdict.v{color:var(--village)}
+.reveal{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.reveal div{background:var(--panel);border:2px solid var(--line);border-radius:14px;padding:14px;display:flex;flex-direction:column;gap:4px;min-width:0}
+.reveal div.wolf{border-color:var(--wolf)}
+.reveal b{font-family:var(--display);font-weight:400;font-size:1.5rem;word-break:break-all}
+.reveal span{font-size:.85rem;color:var(--dim)}
+.wolflist{text-align:center;margin:0}
+.wolflist b{color:var(--wolf)}
+@media (prefers-reduced-motion:reduce){.bar i{transition:none}}
+</style>
+
+<div class="wrap" id="app">
+
+<section class="screen" id="s-setup">
+  <div style="display:flex;flex-direction:column;gap:8px">
+    <a href="../" style="display:inline-block;font:inherit;font-size:12px;font-weight:700;letter-spacing:.06em;color:inherit;opacity:.75;text-decoration:none;padding:2px 0">← あそびの棚</a>
+    <h1>ワードウルフ<span class="moon"></span></h1>
+    <p class="lede">スマホ1台を回して遊ぶ、少数派あてゲーム。</p>
+  </div>
+  <div class="field">
+    <span class="label">人数</span>
+    <div class="stepper">
+      <button class="round" id="minus" aria-label="人数を減らす">−</button>
+      <output id="count">4</output>
+      <button class="round" id="plus" aria-label="人数を増やす">＋</button>
+    </div>
+  </div>
+  <div class="field">
+    <span class="label">名前（空欄でもOK）</span>
+    <div class="names" id="names"></div>
+  </div>
+  <div class="field">
+    <span class="label">トーク時間</span>
+    <div class="chips" id="times">
+      <button class="chip" data-min="2" aria-pressed="false">2分</button>
+      <button class="chip" data-min="3" aria-pressed="true">3分</button>
+      <button class="chip" data-min="5" aria-pressed="false">5分</button>
+    </div>
+  </div>
+  <div class="field">
+    <span class="label">ウルフの人数</span>
+    <div class="chips" id="wolves">
+      <button class="chip" data-w="1" aria-pressed="true">1人</button>
+      <button class="chip" data-w="2" aria-pressed="false" id="w2">2人</button>
+    </div>
+  </div>
+  <div class="spacer"></div>
+  <button class="btn" id="start">ゲームを始める</button>
+</section>
+
+<section class="screen" id="s-pass" hidden>
+  <p class="label">お題の確認 <span id="pass-step"></span></p>
+  <div class="card">
+    <p class="small">スマホを渡してください</p>
+    <div class="who" id="pass-name"></div>
+    <p class="small">他の人に見えないようにしてね</p>
+  </div>
+  <div class="spacer"></div>
+  <button class="btn" id="show">自分のお題を見る</button>
+</section>
+
+<section class="screen" id="s-topic" hidden>
+  <p class="label" id="topic-name"></p>
+  <div class="card">
+    <p class="small">あなたのお題</p>
+    <div class="topic" id="topic-word"></div>
+    <p class="small">自分が多数派か少数派かは、まだわかりません</p>
+  </div>
+  <div class="spacer"></div>
+  <button class="btn" id="hide">覚えた！隠して次へ</button>
+</section>
+
+<section class="screen" id="s-talk" hidden>
+  <h2>トークタイム</h2>
+  <div class="timer" id="timer">3:00</div>
+  <div class="bar"><i id="bar" style="width:100%"></i></div>
+  <ul class="hints">
+    <li>お題そのものの言葉は言わない</li>
+    <li>「どれくらいの頻度で？」「どこで？」から探る</li>
+    <li>違和感があったら話を合わせにいく</li>
+  </ul>
+  <div class="spacer"></div>
+  <button class="btn" id="tovote">投票へ進む</button>
+  <button class="btn ghost" id="pause">一時停止</button>
+</section>
+
+<section class="screen" id="s-vote" hidden>
+  <h2>せーので指さし！</h2>
+  <p class="lede">一番多く指された人をタップしてください。</p>
+  <div class="picks" id="picks"></div>
+</section>
+
+<section class="screen" id="s-result" hidden>
+  <div class="verdict" id="verdict"></div>
+  <p class="lede" id="verdict-sub" style="text-align:center"></p>
+  <p class="wolflist" id="wolflist"></p>
+  <div class="reveal">
+    <div><span>多数派のお題</span><b id="r-maj"></b></div>
+    <div class="wolf"><span>ウルフのお題</span><b id="r-min"></b></div>
+  </div>
+  <div id="chance" style="display:flex;flex-direction:column;gap:10px">
+    <p class="small" style="text-align:center">ウルフは多数派のお題を当てられたら逆転勝ち。答えを言ってもらってから、上のお題を見せずに判定してください。</p>
+    <div class="picks">
+      <button class="pick" id="guess-ok">当てた</button>
+      <button class="pick" id="guess-ng">外れた</button>
+    </div>
+  </div>
+  <div class="spacer"></div>
+  <button class="btn" id="again">同じメンバーでもう一回</button>
+  <button class="btn ghost" id="back">設定に戻る</button>
+</section>
+
+</div>
+
+<script>
+const PAIRS=[["うどん","そば"],["ラーメン","つけ麺"],["ビール","ハイボール"],["焼肉","しゃぶしゃぶ"],["カラオケ","ボウリング"],["海","プール"],["コーヒー","紅茶"],["犬","猫"],["夏","冬"],["温泉","サウナ"],["ディズニーランド","USJ"],["コンビニ","スーパー"],["朝ごはん","夜食"],["電車","バス"],["寿司","刺身"],["カレー","シチュー"],["スマホ","パソコン"],["映画館","ネットフリックス"],["お花見","花火大会"],["誕生日","クリスマス"],["メロンパン","クロワッサン"],["餃子","シュウマイ"],["唐揚げ","フライドポテト"],["枝豆","冷奴"],["日本酒","焼酎"],["新幹線","飛行機"],["キャンプ","バーベキュー"],["マクドナルド","ケンタッキー"],["Instagram","TikTok"],["遊園地","動物園"],["雨","雪"],["お風呂","シャワー"],["目覚まし時計","スヌーズ"],["初デート","合コン"],["ジム","ランニング"],["たこ焼き","お好み焼き"],["納豆","キムチ"],["プリン","ゼリー"],["学生時代","新入社員"],["年末年始","ゴールデンウィーク"],["ホテル","旅館"],["居酒屋","ファミレス"],["チョコレート","アイスクリーム"],["枕","布団"],["梅干し","レモン"],["ピザ","パスタ"],["始発","終電"],["卒業式","入学式"],["牛丼","カツ丼"],["ハンバーグ","ステーキ"],["おにぎり","サンドイッチ"],["焼き鳥","串カツ"],["天ぷら","とんかつ"],["味噌汁","豚汁"],["ワイン","シャンパン"],["レモンサワー","梅酒"],["コーラ","サイダー"],["緑茶","麦茶"],["ショートケーキ","チーズケーキ"],["ポテトチップス","ポップコーン"],["ドーナツ","パンケーキ"],["スイカ","メロン"],["りんご","みかん"],["野球","サッカー"],["テニス","卓球"],["スキー","スノーボード"],["ゴルフ","釣り"],["マラソン","駅伝"],["東京タワー","スカイツリー"],["京都","奈良"],["北海道","沖縄"],["ハワイ","グアム"],["水族館","美術館"],["図書館","本屋"],["病院","歯医者"],["美容院","床屋"],["ゲームセンター","パチンコ"],["漫画","アニメ"],["YouTube","テレビ"],["LINE","メール"],["ギター","ピアノ"],["ライブ","フェス"],["結婚式","同窓会"],["月曜日","金曜日"],["ボーナス","給料日"],["残業","休日出勤"],["会議","飲み会"],["上司","先輩"],["社員旅行","修学旅行"],["運動会","文化祭"],["宿題","テスト"],["自転車","バイク"],["タクシー","運転代行"],["傘","レインコート"],["スニーカー","サンダル"],["Tシャツ","パーカー"],["腕時計","スマートウォッチ"],["ハンバーガー","ホットドッグ"],["ドライヤー","ヘアアイロン"],["ペンギン","パンダ"]];
+const $=id=>document.getElementById(id);
+const S={count:4,names:[],min:3,wolves:1,order:[],wolfIdx:[],maj:"",min2:"",i:0,left:0,total:0,tick:null,paused:false,lastPair:-1};
+let wake=null;
+
+function show(id){document.querySelectorAll(".screen").forEach(s=>s.hidden=s.id!==id);window.scrollTo(0,0)}
+function renderNames(){
+  const box=$("names"),old=[...box.querySelectorAll("input")].map(i=>i.value);
+  box.innerHTML="";
+  for(let i=0;i<S.count;i++){const inp=document.createElement("input");inp.id="name"+i;inp.placeholder="プレイヤー"+(i+1);inp.value=old[i]??(S.names[i]||"");inp.maxLength=10;inp.setAttribute("aria-label","プレイヤー"+(i+1)+"の名前");box.appendChild(inp)}
+  $("count").textContent=S.count;
+  $("w2").disabled=S.count<5;$("w2").style.opacity=S.count<5?.35:1;
+  if(S.count<5&&S.wolves===2)setWolves(1);
+}
+function setWolves(n){S.wolves=n;document.querySelectorAll("#wolves .chip").forEach(c=>c.setAttribute("aria-pressed",String(+c.dataset.w===n)))}
+$("minus").onclick=()=>{if(S.count>3){S.count--;renderNames()}};
+$("plus").onclick=()=>{if(S.count<10){S.count++;renderNames()}};
+document.querySelectorAll("#times .chip").forEach(c=>c.onclick=()=>{S.min=+c.dataset.min;document.querySelectorAll("#times .chip").forEach(x=>x.setAttribute("aria-pressed",String(x===c)))});
+document.querySelectorAll("#wolves .chip").forEach(c=>c.onclick=()=>{if(!c.disabled)setWolves(+c.dataset.w)});
+
+async function keepAwake(){try{if("wakeLock" in navigator&&!wake){wake=await navigator.wakeLock.request("screen");wake.addEventListener("release",()=>wake=null)}}catch(e){}}
+
+function newRound(){
+  S.names=[...$("names").querySelectorAll("input")].map((i,n)=>i.value.trim()||("プレイヤー"+(n+1)));
+  let p;do{p=Math.floor(Math.random()*PAIRS.length)}while(p===S.lastPair&&PAIRS.length>1);S.lastPair=p;
+  const pair=Math.random()<.5?PAIRS[p]:[PAIRS[p][1],PAIRS[p][0]];
+  S.maj=pair[0];S.min2=pair[1];
+  const idx=[...Array(S.count).keys()].sort(()=>Math.random()-.5);
+  S.wolfIdx=idx.slice(0,S.wolves);S.i=0;keepAwake();nextPass();
+}
+function nextPass(){
+  if(S.i>=S.count){startTalk();return}
+  $("pass-name").textContent=S.names[S.i]+" さん";
+  $("pass-step").textContent=(S.i+1)+" / "+S.count;show("s-pass");
+}
+$("start").onclick=newRound;
+$("show").onclick=()=>{$("topic-name").textContent=S.names[S.i]+" さん";$("topic-word").textContent=S.wolfIdx.includes(S.i)?S.min2:S.maj;show("s-topic")};
+$("hide").onclick=()=>{S.i++;nextPass()};
+
+function fmt(s){return Math.floor(s/60)+":"+String(s%60).padStart(2,"0")}
+function drawTimer(){$("timer").textContent=fmt(S.left);$("timer").classList.toggle("low",S.left<=10);$("bar").style.width=(S.left/S.total*100)+"%"}
+function startTalk(){
+  S.total=S.left=S.min*60;S.paused=false;$("pause").textContent="一時停止";drawTimer();show("s-talk");
+  clearInterval(S.tick);S.tick=setInterval(()=>{if(S.paused)return;if(S.left>0){S.left--;drawTimer()}if(S.left===0){clearInterval(S.tick);$("timer").textContent="終了！"}},1000);
+}
+$("pause").onclick=()=>{S.paused=!S.paused;$("pause").textContent=S.paused?"再開":"一時停止"};
+$("tovote").onclick=()=>{
+  clearInterval(S.tick);const box=$("picks");box.innerHTML="";
+  S.names.forEach((n,i)=>{const b=document.createElement("button");b.className="pick";b.textContent=n;b.onclick=()=>result(i);box.appendChild(b)});
+  show("s-vote");
+};
+function result(i){
+  const hit=S.wolfIdx.includes(i);
+  $("r-maj").textContent=S.maj;$("r-min").textContent=S.min2;
+  $("wolflist").innerHTML="ウルフは <b>"+S.wolfIdx.map(k=>S.names[k].replace(/[&<>]/g,"")).join("・")+"</b> さんでした";
+  if(hit){
+    $("verdict").textContent="ウルフ発見！";$("verdict").className="verdict v";
+    $("verdict-sub").textContent=S.names[i]+" さんはウルフでした。最後に逆転チャンス！";
+    $("chance").hidden=false;
+  }else{
+    $("verdict").textContent="ウルフの勝ち";$("verdict").className="verdict w";
+    $("verdict-sub").textContent=S.names[i]+" さんは多数派でした。ウルフにだまされた！";
+    $("chance").hidden=true;
+  }
+  show("s-result");
+}
+$("guess-ok").onclick=()=>{$("verdict").textContent="ウルフの逆転勝ち";$("verdict").className="verdict w";$("verdict-sub").textContent="多数派のお題を見抜かれました！";$("chance").hidden=true};
+$("guess-ng").onclick=()=>{$("verdict").textContent="多数派の勝ち";$("verdict").className="verdict v";$("verdict-sub").textContent="ウルフを見つけて、逆転も阻止しました！";$("chance").hidden=true};
+$("again").onclick=newRound;
+$("back").onclick=()=>show("s-setup");
+document.addEventListener("visibilitychange",()=>{if(document.visibilityState==="visible")keepAwake()});
+renderNames();
+</script>
+
+</body></html>
