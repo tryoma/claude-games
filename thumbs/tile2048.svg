@@ -1,0 +1,33 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 180">
+  <rect width="320" height="180" fill="#0F1424"/>
+  <rect x="96" y="10" width="156" height="156" rx="8" fill="#222C47"/>
+  <rect x="100" y="14" width="34" height="34" rx="4" fill="#F4F6FB"/>
+  <text x="117.0" y="36.8" text-anchor="middle" font-family="sans-serif" font-weight="700" font-size="16" fill="#17203A">2</text>
+  <rect x="138" y="14" width="34" height="34" rx="4" fill="#2B3656"/>
+  <rect x="176" y="14" width="34" height="34" rx="4" fill="#E1E8F5"/>
+  <text x="193.0" y="36.8" text-anchor="middle" font-family="sans-serif" font-weight="700" font-size="16" fill="#17203A">4</text>
+  <rect x="214" y="14" width="34" height="34" rx="4" fill="#B9CBEB"/>
+  <text x="231.0" y="36.8" text-anchor="middle" font-family="sans-serif" font-weight="700" font-size="16" fill="#17203A">8</text>
+  <rect x="100" y="52" width="34" height="34" rx="4" fill="#2B3656"/>
+  <rect x="138" y="52" width="34" height="34" rx="4" fill="#8FA9DC"/>
+  <text x="155.0" y="74.4" text-anchor="middle" font-family="sans-serif" font-weight="700" font-size="15" fill="#17203A">16</text>
+  <rect x="176" y="52" width="34" height="34" rx="4" fill="#6688CB"/>
+  <text x="193.0" y="74.4" text-anchor="middle" font-family="sans-serif" font-weight="700" font-size="15" fill="#FFFFFF">32</text>
+  <rect x="214" y="52" width="34" height="34" rx="4" fill="#4769B5"/>
+  <text x="231.0" y="74.4" text-anchor="middle" font-family="sans-serif" font-weight="700" font-size="15" fill="#FFFFFF">64</text>
+  <rect x="100" y="90" width="34" height="34" rx="4" fill="#E1E8F5"/>
+  <text x="117.0" y="112.8" text-anchor="middle" font-family="sans-serif" font-weight="700" font-size="16" fill="#17203A">4</text>
+  <rect x="138" y="90" width="34" height="34" rx="4" fill="#33539C"/>
+  <text x="155.0" y="111.3" text-anchor="middle" font-family="sans-serif" font-weight="700" font-size="12" fill="#FFFFFF">128</text>
+  <rect x="176" y="90" width="34" height="34" rx="4" fill="#284386"/>
+  <text x="193.0" y="111.3" text-anchor="middle" font-family="sans-serif" font-weight="700" font-size="12" fill="#FFFFFF">256</text>
+  <rect x="214" y="90" width="34" height="34" rx="4" fill="#1F356E"/>
+  <text x="231.0" y="111.3" text-anchor="middle" font-family="sans-serif" font-weight="700" font-size="12" fill="#FFFFFF">512</text>
+  <rect x="100" y="128" width="34" height="34" rx="4" fill="#B9CBEB"/>
+  <text x="117.0" y="150.8" text-anchor="middle" font-family="sans-serif" font-weight="700" font-size="16" fill="#17203A">8</text>
+  <rect x="138" y="128" width="34" height="34" rx="4" fill="#2B3656"/>
+  <rect x="176" y="128" width="34" height="34" rx="4" fill="#172857"/>
+  <text x="193.0" y="148.6" text-anchor="middle" font-family="sans-serif" font-weight="700" font-size="10" fill="#FFFFFF">1024</text>
+  <rect x="214" y="128" width="34" height="34" rx="4" fill="#C99A2E"/>
+  <text x="231.0" y="148.6" text-anchor="middle" font-family="sans-serif" font-weight="700" font-size="10" fill="#FFFFFF">2048</text>
+</svg>

@@ -1,0 +1,349 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>2048 藍</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Dela+Gothic+One&family=Zen+Kaku+Gothic+New:wght@400;500;700&display=swap">
+<style>
+/* Layout: one narrow column — header, difficulty switch, tile ladder, board, short rules. Indigo-dye (藍染め) tile scale, gold for 2048. */
+:root{
+  --bg:#eef1f6; --surface:#ffffff; --fg:#17203a; --muted:#5b6582;
+  --board:#c6cfe0; --cell:#dbe2ee; --line:#cdd5e4;
+  --accent:#2c4a8f; --gold:#c99a2e; --overlay:rgba(238,241,246,.88);
+  --t2:#f4f6fb; --t4:#e1e8f5; --t8:#b9cbeb; --t16:#8fa9dc; --t32:#6688cb;
+  --t64:#4769b5; --t128:#33539c; --t256:#284386; --t512:#1f356e;
+  --t1024:#172857; --t2048:#c99a2e; --tbig:#7a4d0e;
+  --ink-dark:#17203a; --ink-light:#ffffff;
+  --display:"Dela Gothic One","Hiragino Sans","Noto Sans JP",system-ui,sans-serif;
+  --body:"Zen Kaku Gothic New","Hiragino Sans","Noto Sans JP",system-ui,sans-serif;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#0f1424; --surface:#182036; --fg:#e7ebf5; --muted:#99a3c0;
+  --board:#222c47; --cell:#2b3656; --line:#2d3858;
+  --accent:#9db4ea; --gold:#e0b44a; --overlay:rgba(15,20,36,.88);
+  color-scheme:dark;
+}}
+:root[data-theme="dark"]{
+  --bg:#0f1424; --surface:#182036; --fg:#e7ebf5; --muted:#99a3c0;
+  --board:#222c47; --cell:#2b3656; --line:#2d3858;
+  --accent:#9db4ea; --gold:#e0b44a; --overlay:rgba(15,20,36,.88);
+  color-scheme:dark;
+}
+html,body{height:100%}
+body{background:var(--bg);color:var(--fg);font-family:var(--body);
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));
+  padding-block:20px 28px;box-sizing:border-box;}
+.wrap{max-width:460px;margin:0 auto;display:flex;flex-direction:column;gap:14px}
+header{display:flex;align-items:flex-end;justify-content:space-between;gap:12px;flex-wrap:wrap}
+h1{font-family:var(--display);font-weight:400;font-size:clamp(44px,13vw,64px);line-height:.9;margin:0;color:var(--accent);letter-spacing:-.01em}
+h1 small{display:block;font-family:var(--body);font-weight:500;font-size:13px;color:var(--muted);letter-spacing:.06em;margin-top:8px}
+.scores{display:flex;gap:8px}
+.score{background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:6px 12px;min-width:64px;text-align:center;position:relative}
+.score span{display:block;font-size:11px;letter-spacing:.12em;color:var(--muted)}
+.score b{font-family:var(--display);font-weight:400;font-size:20px;font-variant-numeric:tabular-nums}
+.plus{position:absolute;left:0;right:0;top:20px;font-family:var(--display);font-size:16px;color:var(--accent);pointer-events:none;animation:rise .7s ease-out forwards}
+@keyframes rise{to{transform:translateY(-26px);opacity:0}}
+
+.levels{display:grid;grid-template-columns:repeat(4,1fr);gap:4px;background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:4px}
+.levels button{border:0;background:transparent;padding:7px 4px;border-radius:7px;display:flex;flex-direction:column;align-items:center;gap:1px;line-height:1.2}
+.levels button small{font-weight:500;font-size:11px;color:var(--muted)}
+.levels button[aria-pressed="true"]{background:var(--accent);color:var(--bg)}
+.levels button[aria-pressed="true"] small{color:var(--bg);opacity:.85}
+
+.controls{display:flex;gap:8px;justify-content:space-between;align-items:center;flex-wrap:wrap}
+button{font-family:var(--body);font-weight:700;font-size:14px;border-radius:8px;padding:9px 14px;cursor:pointer;border:1px solid var(--line);background:var(--surface);color:var(--fg)}
+button.primary{background:var(--accent);border-color:var(--accent);color:var(--bg)}
+button:disabled{opacity:.4;cursor:default}
+button:focus-visible{outline:3px solid var(--gold);outline-offset:2px}
+.ladder{display:flex;gap:3px;align-items:center}
+.ladder i{width:13px;height:13px;border-radius:3px;background:var(--cell);transition:background .3s}
+.ladder-label{font-size:12px;color:var(--muted);margin-right:6px;font-variant-numeric:tabular-nums}
+
+.board{--k:1;position:relative;width:100%;aspect-ratio:1;max-width:100%;background:var(--board);border-radius:12px;touch-action:none;user-select:none;-webkit-user-select:none}
+.board:focus-visible{outline:3px solid var(--gold);outline-offset:3px}
+.cell,.tile{position:absolute;border-radius:calc(7px * var(--k))}
+.cell{background:var(--cell)}
+.tile{display:grid;place-items:center;font-family:var(--display);font-variant-numeric:tabular-nums;
+  transition:left .11s ease-in-out,top .11s ease-in-out;z-index:1}
+.tile.appear{animation:appear .16s ease-out .1s both}
+.tile.merged{z-index:2;animation:pop .18s ease-out .1s both}
+@keyframes appear{from{transform:scale(0)}to{transform:scale(1)}}
+@keyframes pop{0%{transform:scale(0)}60%{transform:scale(1.14)}100%{transform:scale(1)}}
+.len1,.len2{font-size:calc(clamp(26px,9vw,44px) * var(--k))}
+.len3{font-size:calc(clamp(22px,7.4vw,36px) * var(--k))}
+.len4{font-size:calc(clamp(17px,5.8vw,28px) * var(--k))}
+.len5{font-size:calc(clamp(14px,4.6vw,22px) * var(--k))}
+.v2{background:var(--t2);color:var(--ink-dark);box-shadow:inset 0 0 0 1px var(--t4)}
+.v4{background:var(--t4);color:var(--ink-dark)}
+.v8{background:var(--t8);color:var(--ink-dark)}
+.v16{background:var(--t16);color:var(--ink-dark)}
+.v32{background:var(--t32);color:var(--ink-light)}
+.v64{background:var(--t64);color:var(--ink-light)}
+.v128{background:var(--t128);color:var(--ink-light)}
+.v256{background:var(--t256);color:var(--ink-light)}
+.v512{background:var(--t512);color:var(--ink-light)}
+.v1024{background:var(--t1024);color:var(--ink-light)}
+.v2048{background:var(--t2048);color:var(--ink-light);box-shadow:0 0 18px var(--t2048)}
+.vbig{background:var(--tbig);color:var(--ink-light)}
+.tile.goal{box-shadow:0 0 0 3px var(--gold),0 0 16px var(--gold)}
+
+.overlay{position:absolute;inset:0;z-index:5;border-radius:12px;background:var(--overlay);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;text-align:center;padding:16px;animation:fade .3s ease-out}
+@keyframes fade{from{opacity:0}}
+.overlay h2{font-family:var(--display);font-weight:400;font-size:clamp(26px,8vw,38px);margin:0;text-wrap:balance}
+.overlay p{margin:0;color:var(--muted);max-width:30ch}
+.overlay .row{display:flex;gap:8px;flex-wrap:wrap;justify-content:center}
+.win h2{color:var(--gold)}
+.howto{font-size:13.5px;line-height:1.7;color:var(--muted);margin:0}
+.howto kbd{font-family:var(--body);font-size:12px;border:1px solid var(--line);border-bottom-width:2px;border-radius:4px;padding:0 5px;background:var(--surface);color:var(--fg)}
+@media (prefers-reduced-motion: reduce){.tile{transition:none}.tile.appear,.tile.merged,.plus,.overlay{animation:none}}
+</style>
+
+<div class="wrap">
+  <header>
+    <div><a href="../" style="display:inline-block;font:inherit;font-size:12px;font-weight:700;letter-spacing:.06em;color:inherit;opacity:.75;text-decoration:none;padding:2px 0 8px">← あそびの棚</a>
+    <h1>2048<small id="levelDesc">ふつう・4×4</small></h1></div>
+    <div class="scores">
+      <div class="score" id="scoreBox"><span>スコア</span><b id="score">0</b></div>
+      <div class="score"><span>ベスト</span><b id="best">0</b></div>
+    </div>
+  </header>
+
+  <div class="levels" id="levels" role="group" aria-label="難易度"></div>
+
+  <div class="controls">
+    <div class="ladder" aria-label="これまでの最大タイル"><span class="ladder-label" id="ladderLabel">2→2048</span><span id="ladder" style="display:flex;gap:3px"></span></div>
+    <div style="display:flex;gap:8px">
+      <button id="undo" type="button">1手戻す</button>
+      <button id="restart" type="button" class="primary">新しいゲーム</button>
+    </div>
+  </div>
+
+  <div class="board" id="board" tabindex="0" aria-label="ゲーム盤。矢印キーで操作"></div>
+
+  <p class="howto" id="howto"></p>
+</div>
+
+<script>
+(function(){
+const LEVELS={
+  easy:  {name:'かんたん', size:5, goal:2048, p4:0.1, undo:Infinity, note:'5×5の広い盤面。戻し放題'},
+  normal:{name:'ふつう',   size:4, goal:2048, p4:0.1, undo:Infinity, note:'元祖の4×4。戻し放題'},
+  hard:  {name:'むずかしい',size:4, goal:2048, p4:0.3, undo:3,        note:'4×4。4がよく出て、戻すのは3回まで'},
+  oni:   {name:'鬼',       size:3, goal:512,  p4:0.1, undo:0,        note:'3×3の狭い盤面で512を目指す。戻せません'}
+};
+const ORDER=['easy','normal','hard','oni'];
+const GAP_PX_RATIO=0.12; // gap relative to a cell
+const board=document.getElementById('board');
+const scoreEl=document.getElementById('score'), bestEl=document.getElementById('best');
+const undoBtn=document.getElementById('undo'), ladderEl=document.getElementById('ladder');
+const ladderLabel=document.getElementById('ladderLabel'), levelDesc=document.getElementById('levelDesc');
+const levelsEl=document.getElementById('levels'), howto=document.getElementById('howto');
+const TILE_VARS={2:'--t2',4:'--t4',8:'--t8',16:'--t16',32:'--t32',64:'--t64',128:'--t128',256:'--t256',512:'--t512',1024:'--t1024',2048:'--t2048'};
+
+let S, N=4, GAP=3, CELL=21.25, level='normal', nextId=1, els=new Map(), pendingDead=[], deadTimer=null, overlayEl=null;
+const L=()=>LEVELS[level];
+
+function load(k,d){try{const v=localStorage.getItem(k);return v==null?d:JSON.parse(v)}catch(e){return d}}
+function save(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}
+const bestKey=()=>'best2048_'+level;
+
+ORDER.forEach(k=>{
+  const b=document.createElement('button');b.type='button';b.dataset.level=k;
+  b.innerHTML=LEVELS[k].name+'<small>'+LEVELS[k].size+'×'+LEVELS[k].size+(LEVELS[k].goal!==2048?'・'+LEVELS[k].goal:'')+'</small>';
+  b.addEventListener('click',()=>askLevel(k));levelsEl.appendChild(b);
+});
+
+function setupBoard(){
+  N=L().size;
+  // percentages: N cells + (N+1) gaps = 100
+  CELL=100/(N+(N+1)*GAP_PX_RATIO); GAP=CELL*GAP_PX_RATIO;
+  board.style.setProperty('--k',(4/N).toFixed(3));
+  board.querySelectorAll('.cell').forEach(c=>c.remove());
+  for(let r=0;r<N;r++)for(let c=0;c<N;c++){const d=document.createElement('div');d.className='cell';pos(d,r,c);board.appendChild(d);}
+  [...levelsEl.children].forEach(b=>b.setAttribute('aria-pressed',b.dataset.level===level?'true':'false'));
+  levelDesc.textContent=L().name+'・'+L().note;
+  ladderLabel.textContent='2→'+L().goal;
+  ladderEl.innerHTML='';for(let v=2;v<=L().goal;v*=2){const i=document.createElement('i');i.dataset.v=v;ladderEl.appendChild(i);}
+  const undoTxt=L().undo===Infinity?'<kbd>Z</kbd> で1手戻せます。':L().undo>0?'この難易度では1手戻すのは1ゲーム'+L().undo+'回までです。':'この難易度では1手戻すが使えません。';
+  howto.innerHTML='スワイプか <kbd>←</kbd><kbd>↑</kbd><kbd>→</kbd><kbd>↓</kbd>（<kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd>）でタイルを動かします。同じ数字がぶつかると合体して2倍に。'+L().goal+'のタイルを作ればクリアです。'+undoTxt;
+}
+function pos(el,r,c){el.style.left=(GAP+c*(CELL+GAP))+'%';el.style.top=(GAP+r*(CELL+GAP))+'%';el.style.width=CELL+'%';el.style.height=CELL+'%';}
+
+function emptyCells(tiles){const f=new Set(tiles.map(t=>t.r*N+t.c));const out=[];for(let i=0;i<N*N;i++)if(!f.has(i))out.push(i);return out;}
+function spawn(tiles){const e=emptyCells(tiles);if(!e.length)return null;const i=e[Math.floor(Math.random()*e.length)];
+  const t={id:nextId++,v:Math.random()<L().p4?4:2,r:Math.floor(i/N),c:i%N,isNew:true};tiles.push(t);return t;}
+
+function newGame(){
+  S={tiles:[],score:0,best:load(bestKey(),0),won:false,keepGoing:false,history:[],undosUsed:0,maxTile:2};
+  setupBoard();spawn(S.tiles);spawn(S.tiles);hardRender();persist();
+}
+function serial(){return {level,tiles:S.tiles.map(({v,r,c})=>({v,r,c})),score:S.score,won:S.won,keepGoing:S.keepGoing,history:S.history.slice(-30),undosUsed:S.undosUsed,maxTile:S.maxTile};}
+function persist(){save('game2048_'+level,serial());save('level2048',level);}
+function restore(d){
+  level=LEVELS[d.level]?d.level:'normal';
+  S={tiles:d.tiles.map(t=>({id:nextId++,v:t.v,r:t.r,c:t.c})),score:d.score,best:load(bestKey(),0),won:!!d.won,keepGoing:!!d.keepGoing,history:d.history||[],undosUsed:d.undosUsed||0,maxTile:d.maxTile||2};
+  setupBoard();
+}
+
+function canMove(tiles){
+  if(tiles.length<N*N)return true;
+  const g={};tiles.forEach(t=>g[t.r*N+t.c]=t.v);
+  for(let r=0;r<N;r++)for(let c=0;c<N;c++){const v=g[r*N+c];if(c<N-1&&g[r*N+c+1]===v)return true;if(r<N-1&&g[(r+1)*N+c]===v)return true;}
+  return false;
+}
+
+function move(dir){
+  if(overlayEl)return;
+  flushDead();
+  const [dr,dc]=[[-1,0],[0,1],[1,0],[0,-1]][dir];
+  const grid=Array.from({length:N},()=>Array(N).fill(null));
+  S.tiles.forEach(t=>{t.isNew=false;t.merged=false;grid[t.r][t.c]=t;});
+  const rows=[...Array(N).keys()], cols=[...Array(N).keys()];
+  if(dr===1)rows.reverse(); if(dc===1)cols.reverse();
+  const snapshot={tiles:S.tiles.map(({v,r,c})=>({v,r,c})),score:S.score,won:S.won,keepGoing:S.keepGoing,maxTile:S.maxTile};
+  let moved=false,gained=0;const born=[],dead=[];
+  for(const r of rows)for(const c of cols){
+    const t=grid[r][c]; if(!t)continue;
+    let nr=r,nc=c;
+    while(true){const rr=nr+dr,cc=nc+dc;if(rr<0||rr>=N||cc<0||cc>=N||grid[rr][cc])break;nr=rr;nc=cc;}
+    const rr=nr+dr,cc=nc+dc;
+    const n=(rr>=0&&rr<N&&cc>=0&&cc<N)?grid[rr][cc]:null;
+    if(n&&n.v===t.v&&!n.merged){
+      const m={id:nextId++,v:t.v*2,r:rr,c:cc,merged:true};
+      grid[r][c]=null;grid[rr][cc]=m;
+      t.r=rr;t.c=cc;dead.push(t,n);born.push(m);gained+=m.v;moved=true;
+      if(m.v>S.maxTile)S.maxTile=m.v;
+    }else if(nr!==r||nc!==c){grid[r][c]=null;grid[nr][nc]=t;t.r=nr;t.c=nc;moved=true;}
+  }
+  if(!moved)return;
+  if(L().undo>0){S.history.push(snapshot); if(S.history.length>30)S.history.shift();}
+  const deadSet=new Set(dead);
+  S.tiles=S.tiles.filter(t=>!deadSet.has(t)).concat(born);
+  S.score+=gained;
+  if(S.score>S.best){S.best=S.score;save(bestKey(),S.best);}
+  spawn(S.tiles);
+  render(dead);
+  if(gained)showPlus(gained);
+  if(!S.won&&born.some(t=>t.v>=L().goal)){S.won=true;setTimeout(()=>showOverlay('win'),260);}
+  else if(!canMove(S.tiles)){setTimeout(()=>showOverlay('over'),260);}
+  persist();
+}
+
+function cls(t){
+  const len=String(t.v).length;
+  return 'tile len'+len+' '+(t.v>2048?'vbig':'v'+t.v)+(t.v===L().goal&&L().goal!==2048?' goal':'')+(t.isNew?' appear':'')+(t.merged?' merged':'');
+}
+function render(dead){
+  dead.forEach(t=>{const el=els.get(t.id);if(el){pos(el,t.r,t.c);pendingDead.push(t.id);}});
+  S.tiles.forEach(t=>{
+    let el=els.get(t.id);
+    if(!el){el=document.createElement('div');el.textContent=t.v;els.set(t.id,el);pos(el,t.r,t.c);el.className=cls(t);board.appendChild(el);}
+    else{el.className=cls(t);pos(el,t.r,t.c);}
+  });
+  clearTimeout(deadTimer);deadTimer=setTimeout(flushDead,120);
+  updateUI();
+}
+function flushDead(){clearTimeout(deadTimer);pendingDead.forEach(id=>{const el=els.get(id);if(el)el.remove();els.delete(id);});pendingDead=[];}
+function hardRender(){
+  flushDead();els.forEach(el=>el.remove());els.clear();hideOverlay();
+  S.tiles.forEach(t=>{t.isNew=false;t.merged=false;});
+  render([]);
+}
+function undosLeft(){return L().undo===Infinity?Infinity:Math.max(0,L().undo-S.undosUsed);}
+function updateUI(){
+  scoreEl.textContent=S.score;bestEl.textContent=S.best;
+  const left=undosLeft();
+  undoBtn.disabled=!S.history.length||left<=0;
+  undoBtn.textContent=left===Infinity?'1手戻す':left>0?'1手戻す（残り'+left+'）':'戻せません';
+  const max=Math.max(S.maxTile,...S.tiles.map(t=>t.v));
+  [...ladderEl.children].forEach(i=>{const v=+i.dataset.v;i.style.background=v<=max?'var('+(TILE_VARS[v]||'--t2048')+')':'';});
+}
+function showPlus(n){const s=document.createElement('div');s.className='plus';s.textContent='+'+n;document.getElementById('scoreBox').appendChild(s);setTimeout(()=>s.remove(),700);}
+
+function undo(){
+  if(!S.history.length||undosLeft()<=0)return;
+  const h=S.history.pop();S.undosUsed++;
+  S.tiles=h.tiles.map(t=>({id:nextId++,v:t.v,r:t.r,c:t.c}));
+  S.score=h.score;S.won=h.won;S.keepGoing=h.keepGoing;S.maxTile=h.maxTile;
+  hardRender();persist();
+}
+
+function askLevel(k){
+  if(k===level&&!overlayEl)return;
+  const inProgress=S.score>0&&!overlayEl;
+  if(!inProgress){switchLevel(k);return;}
+  showOverlay('switch',k);
+}
+function switchLevel(k){
+  persist();
+  level=k;save('level2048',level);
+  const saved=load('game2048_'+k,null);
+  if(saved&&saved.tiles&&saved.tiles.length){
+    restore(saved);hardRender();
+    if(!canMove(S.tiles)||(S.won&&!S.keepGoing))newGame();
+  }else newGame();
+  board.focus();
+}
+
+function hideOverlay(){if(overlayEl){overlayEl.remove();overlayEl=null;}}
+function showOverlay(kind,arg){
+  hideOverlay();
+  const o=document.createElement('div');o.className='overlay '+(kind==='win'?'win':'');
+  if(kind==='win'){
+    o.innerHTML='<h2>'+L().goal+' 達成！</h2><p>'+L().name+'でクリア。スコア '+S.score+'。このまま続けて、さらに大きなタイルも狙えます。</p><div class="row"><button type="button" class="primary" data-a="go">続ける</button><button type="button" data-a="new">新しいゲーム</button></div>';
+  }else if(kind==='over'){
+    const canUndo=S.history.length&&undosLeft()>0;
+    o.innerHTML='<h2>ゲームオーバー</h2><p>スコア '+S.score+(S.score>=S.best&&S.score>0?'（ベスト更新）':'')+'</p><div class="row"><button type="button" class="primary" data-a="new">もう一度</button>'+(canUndo?'<button type="button" data-a="undo">1手戻す</button>':'')+'</div>';
+  }else if(kind==='switch'){
+    o.innerHTML='<h2>「'+LEVELS[arg].name+'」に変えますか？</h2><p>今のゲームは保存され、「'+L().name+'」に戻すと続きから遊べます。</p><div class="row"><button type="button" class="primary" data-a="switch">変える</button><button type="button" data-a="cancel">このまま続ける</button></div>';
+  }
+  o.addEventListener('click',e=>{const a=e.target.dataset&&e.target.dataset.a;
+    if(a==='go'){S.keepGoing=true;hideOverlay();persist();board.focus();}
+    if(a==='new'){newGame();board.focus();}
+    if(a==='undo'){undo();board.focus();}
+    if(a==='switch'){hideOverlay();switchLevel(arg);}
+    if(a==='cancel'){hideOverlay();board.focus();}
+  });
+  board.appendChild(o);overlayEl=o;
+  const b=o.querySelector('button');if(b)b.focus();
+}
+
+document.addEventListener('keydown',e=>{
+  if(e.target.tagName==='BUTTON'&&(e.key==='Enter'||e.key===' '))return;
+  const map={ArrowUp:0,ArrowRight:1,ArrowDown:2,ArrowLeft:3,w:0,d:1,s:2,a:3,W:0,D:1,S:2,A:3};
+  if(e.key in map&&!e.metaKey&&!e.ctrlKey&&!e.altKey){e.preventDefault();move(map[e.key]);}
+  else if(e.key==='z'||e.key==='Z'||e.key==='u'||e.key==='U'){e.preventDefault();if(!overlayEl)undo();}
+});
+let sx=0,sy=0,tracking=false;
+board.addEventListener('pointerdown',e=>{if(e.target.closest('.overlay'))return;tracking=true;sx=e.clientX;sy=e.clientY;});
+window.addEventListener('pointerup',e=>{
+  if(!tracking)return;tracking=false;
+  const dx=e.clientX-sx,dy=e.clientY-sy;
+  if(Math.max(Math.abs(dx),Math.abs(dy))<24)return;
+  if(Math.abs(dx)>Math.abs(dy))move(dx>0?1:3);else move(dy>0?2:0);
+});
+window.addEventListener('pointercancel',()=>tracking=false);
+undoBtn.addEventListener('click',undo);
+document.getElementById('restart').addEventListener('click',()=>{newGame();board.focus();});
+
+function start(data){
+  let saved=data&&data.game;
+  if(!saved){
+    const lv=load('level2048',null);
+    if(lv&&LEVELS[lv]){level=lv;saved=load('game2048_'+lv,null);}
+    else{const old=load('game2048',null);if(old&&old.tiles){old.level='normal';saved=old;}}
+  }
+  if(saved&&saved.tiles&&saved.tiles.length){
+    restore(saved);
+    if(!load(bestKey(),0)&&level==='normal'){const ob=load('best2048',0);if(ob){S.best=ob;save(bestKey(),ob);}}
+    hardRender();
+    if(!canMove(S.tiles))showOverlay('over');
+    else if(S.won&&!S.keepGoing)showOverlay('win');
+  } else newGame();
+}
+window.claude?.hot?.snapshot?.(()=>({game:serial()}));
+window.claude?.hot?.ready ? window.claude.hot.ready(start) : start(window.claude?.hot?.data ?? {});
+})();
+</script>
+
+</body></html>
