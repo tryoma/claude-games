@@ -1,0 +1,620 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>つみきタワー</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Mochiy+Pop+One&family=Zen+Maru+Gothic:wght@500;700&display=swap">
+<style>
+/* Layout: one-screen playroom — score strip on top, tall stage in the middle, a thumb-reach control tray at the bottom */
+:root {
+  --sky: #dfeaf0;
+  --sky-low: #f4efe3;
+  --paper: #fbf8f1;
+  --ink: #26323a;
+  --ink-soft: #5c6a72;
+  --line: #c9d5db;
+  --table: #9a6440;
+  --table-dark: #5f3a22;
+  --accent: #d9483b;
+  --accent-dark: #a8302a;
+  --font-display: "Mochiy Pop One", "Zen Maru Gothic", "Hiragino Maru Gothic ProN", sans-serif;
+  --font-body: "Zen Maru Gothic", "Hiragino Maru Gothic ProN", "Hiragino Sans", "Noto Sans JP", sans-serif;
+  color-scheme: light;
+}
+html, body { height: 100%; }
+body {
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--font-body);
+  overflow: hidden;
+  -webkit-user-select: none; user-select: none;
+}
+.app {
+  height: 100%;
+  display: grid;
+  grid-template-rows: auto 1fr auto;
+  max-width: 760px;
+  margin: 0 auto;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 10px;
+  gap: 10px;
+  box-sizing: border-box;
+}
+header {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 12px; flex-wrap: wrap;
+}
+h1 {
+  font-family: var(--font-display);
+  font-weight: 400;
+  font-size: 1.35rem;
+  margin: 0;
+  letter-spacing: 0.02em;
+  display: flex; align-items: center; gap: 8px;
+}
+.logo { display: inline-grid; grid-template-columns: repeat(2, 10px); gap: 2px; }
+.logo i { width: 10px; height: 10px; border-radius: 2px; display: block; }
+.logo i:nth-child(1) { background: #d9483b; grid-column: 1 / 3; width: 22px; }
+.logo i:nth-child(2) { background: #2f6fb5; }
+.logo i:nth-child(3) { background: #f0b429; }
+.stats { display: flex; gap: 6px; }
+.stat {
+  display: grid; justify-items: center;
+  padding: 4px 10px;
+  border-radius: 10px;
+  background: var(--sky);
+  min-width: 64px;
+}
+.stat span { font-size: 0.68rem; color: var(--ink-soft); letter-spacing: 0.08em; font-weight: 700; }
+.stat b {
+  font-family: var(--font-display); font-weight: 400;
+  font-size: 1.05rem; font-variant-numeric: tabular-nums; line-height: 1.2;
+}
+.stat b small { font-size: 0.65rem; margin-left: 1px; }
+.lives { display: flex; gap: 3px; height: 1.26rem; align-items: center; }
+.lives i { width: 11px; height: 11px; border-radius: 3px; background: var(--accent); display: block; transition: background .2s, transform .2s; }
+.lives i.lost { background: var(--line); transform: scale(.8); }
+
+.stage {
+  position: relative;
+  border-radius: 18px;
+  overflow: hidden;
+  background: var(--sky);
+  min-height: 0;
+  box-shadow: inset 0 0 0 2px var(--line);
+}
+canvas#game { position: absolute; inset: 0; width: 100%; height: 100%; touch-action: none; cursor: crosshair; display: block; }
+.hint {
+  position: absolute; left: 50%; top: 14px; transform: translateX(-50%);
+  background: rgba(251, 248, 241, 0.92);
+  color: var(--ink);
+  padding: 6px 14px; border-radius: 999px; font-size: 0.85rem; font-weight: 700;
+  white-space: nowrap; pointer-events: none; transition: opacity .5s;
+}
+.toast {
+  position: absolute; left: 50%; top: 42%; transform: translate(-50%, -50%) scale(.9);
+  font-family: var(--font-display); font-size: 1.6rem; color: var(--accent);
+  text-shadow: 0 2px 0 var(--paper), 0 -2px 0 var(--paper), 2px 0 0 var(--paper), -2px 0 0 var(--paper);
+  opacity: 0; pointer-events: none; transition: opacity .25s, transform .25s; white-space: nowrap;
+}
+.toast.show { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+
+.over {
+  position: absolute; inset: 0;
+  display: grid; place-items: center;
+  background: rgba(38, 50, 58, 0.45);
+  padding: 16px;
+}
+.card {
+  background: var(--paper); color: var(--ink);
+  border-radius: 18px; padding: 22px 26px;
+  text-align: center; display: grid; gap: 10px; justify-items: center;
+  box-shadow: 0 10px 0 var(--table-dark);
+  max-width: 300px; width: 100%;
+}
+.card h2 { font-family: var(--font-display); font-weight: 400; margin: 0; font-size: 1.3rem; text-wrap: balance; }
+.card .big { font-family: var(--font-display); font-size: 2.6rem; line-height: 1; font-variant-numeric: tabular-nums; }
+.card .big small { font-size: 1rem; }
+.card p { margin: 0; color: var(--ink-soft); font-size: 0.9rem; }
+.card .new { color: var(--accent); font-weight: 700; }
+
+.tray {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  gap: 10px;
+}
+button {
+  font-family: var(--font-display); font-weight: 400;
+  font-size: 1rem;
+  border: 0; border-radius: 14px;
+  padding: 12px 16px;
+  cursor: pointer;
+  color: var(--paper);
+  background: var(--ink);
+  box-shadow: 0 4px 0 #11181d;
+  transition: transform .06s, box-shadow .06s;
+  touch-action: manipulation;
+}
+button:active { transform: translateY(3px); box-shadow: 0 1px 0 #11181d; }
+button:focus-visible { outline: 3px solid #f0b429; outline-offset: 3px; }
+#drop { background: var(--accent); box-shadow: 0 4px 0 var(--accent-dark); }
+#drop:active { box-shadow: 0 1px 0 var(--accent-dark); }
+#drop:disabled, #rotate:disabled { opacity: .45; cursor: default; }
+#again { background: var(--accent); box-shadow: 0 4px 0 var(--accent-dark); margin-top: 4px; }
+.next {
+  display: grid; justify-items: center; gap: 2px;
+  background: var(--sky); border-radius: 14px; padding: 4px 10px 6px;
+}
+.next span { font-size: 0.66rem; letter-spacing: 0.12em; color: var(--ink-soft); font-weight: 700; }
+#nextCanvas { width: 84px; height: 54px; display: block; }
+.next em { font-style: normal; font-size: 0.78rem; font-weight: 700; }
+.keys { grid-column: 1 / -1; text-align: center; font-size: 0.74rem; color: var(--ink-soft); }
+.keys kbd {
+  font-family: var(--font-body); font-weight: 700;
+  background: var(--sky); border-radius: 5px; padding: 1px 6px; font-size: 0.7rem;
+}
+@media (hover: none) { .keys { display: none; } }
+@media (max-width: 460px) {
+  h1 { font-size: 1.1rem; }
+  .stat { min-width: 52px; padding: 3px 7px; }
+}
+</style>
+
+<div class="app">
+  <header>
+    <div><a href="../" style="display:inline-block;font:inherit;font-size:12px;font-weight:700;letter-spacing:.06em;color:inherit;opacity:.75;text-decoration:none;padding:2px 0">← あそびの棚</a><h1><span class="logo" aria-hidden="true"><i></i><i></i><i></i></span>つみきタワー</h1></div>
+    <div class="stats">
+      <div class="stat"><span>たかさ</span><b id="hNow">0.0<small>cm</small></b></div>
+      <div class="stat"><span>ベスト</span><b id="hBest">0.0<small>cm</small></b></div>
+      <div class="stat"><span>じこ記録</span><b id="hRecord">0.0<small>cm</small></b></div>
+      <div class="stat"><span>のこり</span><div class="lives" id="lives" aria-label="のこり3回"><i></i><i></i><i></i></div></div>
+    </div>
+  </header>
+
+  <div class="stage" id="stage">
+    <canvas id="game" aria-label="積み木を積むステージ"></canvas>
+    <div class="hint" id="hint">左右に動かして、タップで落とす</div>
+    <div class="toast" id="toast"></div>
+    <div class="over" id="over" hidden>
+      <div class="card">
+        <h2>くずれちゃった！</h2>
+        <div class="big" id="finalH">0.0<small>cm</small></div>
+        <p id="finalInfo">積んだ数 0 個</p>
+        <p class="new" id="newRec" hidden>じこ記録こうしん！</p>
+        <button id="again" type="button">もう一度あそぶ</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="tray">
+    <button id="rotate" type="button" style="justify-self:start">↻ 回す</button>
+    <div class="next" aria-live="polite">
+      <span>NEXT</span>
+      <canvas id="nextCanvas" width="168" height="108"></canvas>
+      <em id="nextName">—</em>
+    </div>
+    <button id="drop" type="button" style="justify-self:end">落とす ↓</button>
+    <div class="keys"><kbd>←</kbd><kbd>→</kbd> 動かす　<kbd>↑</kbd> 45°回す　<kbd>Z</kbd><kbd>X</kbd> 少し回す　<kbd>Space</kbd> 落とす</div>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/matter-js/0.19.0/matter.min.js"></script>
+<script>
+(() => {
+  const { Engine, Bodies, Body, Composite } = Matter;
+
+  // ---- 色（おもちゃの積み木） ----
+  const COLORS = [
+    { fill: "#d9483b", edge: "#8e2a22", hi: "#ff9b8f" },
+    { fill: "#2f6fb5", edge: "#1b4170", hi: "#8cbcf0" },
+    { fill: "#f0b429", edge: "#9a6a0a", hi: "#ffe39a" },
+    { fill: "#3e9b5f", edge: "#225a36", hi: "#9fe0b4" },
+    { fill: "#d9a066", edge: "#8a5a2c", hi: "#ffe0b8" },
+  ];
+  const PHYS = { friction: 0.9, frictionStatic: 1.4, restitution: 0.02, density: 0.0016, slop: 0.03 };
+
+  // ---- 積み木の形 ----
+  const SHAPES = [
+    { id: "cube",   name: "立方体", w: 5, make: (x, y) => Bodies.rectangle(x, y, 56, 56, PHYS) },
+    { id: "brick",  name: "レンガ", w: 5, make: (x, y) => Bodies.rectangle(x, y, 104, 46, PHYS) },
+    { id: "plank",  name: "角材",   w: 4, make: (x, y) => Bodies.rectangle(x, y, 150, 24, PHYS) },
+    { id: "pillar", name: "柱",     w: 3, make: (x, y) => Bodies.rectangle(x, y, 30, 112, PHYS) },
+    { id: "tri",    name: "三角",   w: 3, make: (x, y) => Bodies.polygon(x, y, 3, 40, PHYS) },
+    { id: "trap",   name: "台形",   w: 3, make: (x, y) => Bodies.trapezoid(x, y, 112, 46, 0.45, PHYS) },
+    { id: "hex",    name: "六角",   w: 2, make: (x, y) => Bodies.polygon(x, y, 6, 32, PHYS) },
+    { id: "cyl",    name: "まる",   w: 2, make: (x, y) => Bodies.circle(x, y, 28, PHYS, 28) },
+    { id: "ell",    name: "L字",    w: 3, make: (x, y) => Body.create({ ...PHYS, parts: [
+        Bodies.rectangle(x - 32, y, 36, 100),
+        Bodies.rectangle(x + 18, y + 32, 64, 36),
+      ] }) },
+    { id: "arch",   name: "アーチ", w: 3, make: (x, y) => Body.create({ ...PHYS, parts: [
+        Bodies.rectangle(x, y - 22, 124, 30),
+        Bodies.rectangle(x - 46, y + 18, 30, 50),
+        Bodies.rectangle(x + 46, y + 18, 30, 50),
+      ] }) },
+  ];
+  const TOTAL_W = SHAPES.reduce((s, k) => s + k.w, 0);
+  function pickShape() {
+    let r = Math.random() * TOTAL_W;
+    for (const s of SHAPES) { if ((r -= s.w) < 0) return s; }
+    return SHAPES[0];
+  }
+  const pickColor = (avoid) => {
+    let c; do { c = COLORS[(Math.random() * COLORS.length) | 0]; } while (c === avoid);
+    return c;
+  };
+
+  // ---- 世界のしくみ ----
+  const UNITS_PER_CM = 4;          // 4ユニット = 1cm
+  const WORLD_HALF = 320;
+  const BASE_HALF = 140;           // 台の半分の幅
+  const KILL_Y = 320;
+  const MAX_LIVES = 3;
+
+  const engine = Engine.create({ enableSleeping: true });
+  engine.positionIterations = 10;
+  engine.velocityIterations = 8;
+  const world = engine.world;
+  const base = Bodies.rectangle(0, 20, BASE_HALF * 2, 40, { isStatic: true, friction: 1, frictionStatic: 2 });
+  Composite.add(world, base);
+
+  // ---- 画面 ----
+  const stage = document.getElementById("stage");
+  const cv = document.getElementById("game");
+  const ctx = cv.getContext("2d");
+  let cw = 0, ch = 0, dpr = 1, scale = 1, viewH = 600;
+  function resize() {
+    const r = stage.getBoundingClientRect();
+    dpr = Math.min(window.devicePixelRatio || 1, 2);
+    cw = r.width; ch = r.height;
+    cv.width = Math.round(cw * dpr); cv.height = Math.round(ch * dpr);
+    scale = Math.min(cw / (WORLD_HALF * 2), ch / 700);
+    scale = Math.max(scale, 0.35);
+    viewH = ch / scale;
+  }
+  new ResizeObserver(resize).observe(stage);
+  resize();
+
+  // ---- 状態 ----
+  let state = "aim";   // aim | falling | over
+  let aimBody = null, aimShape = null, aimColor = null, aimX = 0, aimAngle = 0;
+  let nextShape = pickShape(), nextColor = pickColor();
+  let active = null, settleFrames = 0, fallTimer = 0;
+  let lives = MAX_LIVES, best = 0, placed = 0, liveH = 0;
+  let camTop = -(viewH - 90), spawnY = -240;
+  let record = 0;
+  try { record = parseFloat(localStorage.getItem("tsumiki-best")) || 0; } catch (e) {}
+  let hintShown = true;
+
+  const $ = (id) => document.getElementById(id);
+  const fmt = (u) => (u / UNITS_PER_CM).toFixed(1);
+  const setCm = (el, u) => { el.innerHTML = fmt(u) + "<small>cm</small>"; };
+
+  function dynamicBodies() {
+    return Composite.allBodies(world).filter(b => !b.isStatic);
+  }
+  function towerTop(excludeActive) {
+    let top = 0;
+    for (const b of dynamicBodies()) {
+      if (excludeActive && b === active) continue;
+      if (b.speed > 1.5) continue;
+      top = Math.min(top, b.bounds.min.y);
+    }
+    return -top;
+  }
+
+  function spawn() {
+    aimShape = nextShape; aimColor = nextColor;
+    nextShape = pickShape(); nextColor = pickColor(aimColor);
+    spawnY = -towerTop(false) - 230;
+    aimAngle = 0;
+    aimBody = aimShape.make(aimX, spawnY);
+    aimBody.blockColor = aimColor;
+    aimBody.shapeId = aimShape.id;
+    state = "aim";
+    drawNext();
+    updateButtons();
+  }
+
+  function drop() {
+    if (state !== "aim" || !aimBody) return;
+    Body.setPosition(aimBody, { x: aimX, y: spawnY });
+    Body.setAngle(aimBody, aimAngle);
+    Body.setVelocity(aimBody, { x: 0, y: 0 });
+    Body.setAngularVelocity(aimBody, 0);
+    Composite.add(world, aimBody);
+    active = aimBody; aimBody = null;
+    state = "falling"; settleFrames = 0; fallTimer = 0;
+    placed++;
+    if (hintShown) { hintShown = false; $("hint").style.opacity = 0; }
+    updateButtons();
+  }
+
+  function rotate(delta) {
+    if (state !== "aim") return;
+    aimAngle += delta;
+  }
+
+  function onSettled() {
+    active = null;
+    const h = towerTop(false);
+    if (h > best) best = h;
+    setCm($("hBest"), best);
+    if (best > record) {
+      record = best;
+      try { localStorage.setItem("tsumiki-best", String(record)); } catch (e) {}
+      setCm($("hRecord"), record);
+    }
+    if (state !== "over") spawn();
+  }
+
+  let toastTimer = 0;
+  function toast(msg) {
+    const t = $("toast");
+    t.textContent = msg; t.classList.add("show");
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => t.classList.remove("show"), 1100);
+  }
+
+  function loseLife() {
+    if (state === "over") return;
+    lives--;
+    renderLives();
+    if (lives <= 0) gameOver();
+    else toast(`ポロッ！ あと${lives}回`);
+  }
+
+  function renderLives() {
+    const el = $("lives");
+    [...el.children].forEach((i, n) => i.classList.toggle("lost", n >= lives));
+    el.setAttribute("aria-label", `のこり${Math.max(lives, 0)}回`);
+  }
+
+  let startRecord = record;
+  function gameOver() {
+    state = "over";
+    aimBody = null; active = null;
+    if (best > record) { record = best; try { localStorage.setItem("tsumiki-best", String(record)); } catch (e) {} }
+    setCm($("hRecord"), record);
+    setCm($("finalH"), best);
+    $("finalInfo").textContent = `積んだ数 ${placed} 個　・　じこ記録 ${fmt(record)} cm`;
+    $("newRec").hidden = !(best > startRecord && best > 0);
+    $("over").hidden = false;
+    updateButtons();
+    setTimeout(() => $("again").focus(), 50);
+  }
+
+  function restart() {
+    for (const b of dynamicBodies()) Composite.remove(world, b);
+    lives = MAX_LIVES; best = 0; placed = 0; liveH = 0; active = null;
+    startRecord = record;
+    renderLives();
+    setCm($("hBest"), 0); setCm($("hNow"), 0);
+    $("over").hidden = true;
+    aimX = 0;
+    camTop = -(viewH - 90);
+    spawn();
+  }
+
+  function updateButtons() {
+    $("drop").disabled = state !== "aim";
+    $("rotate").disabled = state !== "aim";
+  }
+
+  // ---- 1ステップごとの判定 ----
+  function logic() {
+    for (const b of dynamicBodies()) {
+      if (b.position.y > KILL_Y || Math.abs(b.position.x) > 900) {
+        Composite.remove(world, b);
+        const wasActive = b === active;
+        loseLife();
+        if (wasActive && state === "falling") onSettled();
+      }
+    }
+    if (state === "falling" && active) {
+      fallTimer++;
+      const calm = active.isSleeping || (active.speed < 0.12 && Math.abs(active.angularSpeed) < 0.004);
+      settleFrames = calm ? settleFrames + 1 : 0;
+      if (settleFrames > 24 || fallTimer > 60 * 5) onSettled();
+    }
+  }
+
+  // ---- 入力 ----
+  function clampAim(x) {
+    const visHalf = (cw / 2) / scale - 50;
+    const lim = Math.min(WORLD_HALF - 40, visHalf);
+    return Math.max(-lim, Math.min(lim, x));
+  }
+  function pointerToWorldX(e) {
+    const r = cv.getBoundingClientRect();
+    return (e.clientX - r.left - cw / 2) / scale;
+  }
+  let pointerDown = false;
+  cv.addEventListener("pointermove", (e) => { aimX = clampAim(pointerToWorldX(e)); });
+  cv.addEventListener("pointerdown", (e) => {
+    pointerDown = true;
+    aimX = clampAim(pointerToWorldX(e));
+    cv.setPointerCapture?.(e.pointerId);
+  });
+  cv.addEventListener("pointerup", (e) => {
+    if (!pointerDown) return;
+    pointerDown = false;
+    aimX = clampAim(pointerToWorldX(e));
+    drop();
+  });
+  cv.addEventListener("pointercancel", () => { pointerDown = false; });
+  cv.addEventListener("wheel", (e) => {
+    e.preventDefault();
+    rotate((e.deltaY > 0 ? 1 : -1) * Math.PI / 12);
+  }, { passive: false });
+
+  $("rotate").addEventListener("click", () => rotate(Math.PI / 4));
+  $("drop").addEventListener("click", drop);
+  $("again").addEventListener("click", restart);
+
+  window.addEventListener("keydown", (e) => {
+    const onButton = e.target instanceof HTMLButtonElement;
+    const step = e.shiftKey ? 4 : 14;
+    switch (e.key) {
+      case "ArrowLeft": aimX = clampAim(aimX - step); e.preventDefault(); break;
+      case "ArrowRight": aimX = clampAim(aimX + step); e.preventDefault(); break;
+      case "ArrowUp": case "r": case "R": rotate(Math.PI / 4); e.preventDefault(); break;
+      case "z": case "Z": rotate(-Math.PI / 12); break;
+      case "x": case "X": rotate(Math.PI / 12); break;
+      case " ": case "ArrowDown": case "Enter":
+        if (onButton) return;
+        if (state === "over" && e.key !== "ArrowDown") { restart(); e.preventDefault(); break; }
+        drop(); e.preventDefault(); break;
+    }
+  });
+
+  // ---- 描画 ----
+  function partsOf(body) { return body.parts.length > 1 ? body.parts.slice(1) : [body]; }
+
+  function pathPart(c, part) {
+    const v = part.vertices;
+    c.beginPath();
+    c.moveTo(v[0].x, v[0].y);
+    for (let i = 1; i < v.length; i++) c.lineTo(v[i].x, v[i].y);
+    c.closePath();
+  }
+
+  function drawBlock(c, body, alpha = 1) {
+    const col = body.blockColor || COLORS[4];
+    c.globalAlpha = alpha;
+    c.lineJoin = "round";
+    for (const p of partsOf(body)) {
+      pathPart(c, p);
+      c.fillStyle = col.fill; c.fill();
+      // 内側のふち（面取りの光）
+      c.save(); c.clip();
+      c.strokeStyle = col.hi; c.globalAlpha = alpha * 0.45; c.lineWidth = 9; c.stroke();
+      c.restore();
+      c.globalAlpha = alpha;
+      c.strokeStyle = col.edge; c.lineWidth = 2.6; c.stroke();
+    }
+    if (body.shapeId === "cyl") {
+      c.beginPath(); c.arc(body.position.x, body.position.y, 7, 0, Math.PI * 2);
+      c.fillStyle = col.edge; c.fill();
+    }
+    c.globalAlpha = 1;
+  }
+
+  function draw() {
+    // カメラ
+    const top = state === "falling" ? towerTop(true) : towerTop(false);
+    const sy = state === "aim" ? spawnY : -top - 230;
+    const camBase = -(viewH - 90);
+    const target = Math.min(camBase, sy - 110);
+    camTop += (target - camTop) * 0.08;
+
+    const X = (wx) => cw / 2 + wx * scale;
+    const Y = (wy) => (wy - camTop) * scale;
+
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    // 空
+    const g = ctx.createLinearGradient(0, 0, 0, ch);
+    g.addColorStop(0, "#cfe0ea"); g.addColorStop(1, "#f4efe3");
+    ctx.fillStyle = g; ctx.fillRect(0, 0, cw, ch);
+
+    // 目盛り（身長計のような定規）
+    ctx.font = `700 ${11}px "Zen Maru Gothic", sans-serif`;
+    ctx.textBaseline = "middle";
+    const stepMinor = 5 * UNITS_PER_CM;
+    const hTop = Math.ceil(-camTop / stepMinor) * stepMinor;
+    for (let h = 0; h <= hTop; h += stepMinor) {
+      const y = Y(-h);
+      if (y < -10 || y > ch + 10) continue;
+      const major = h % (10 * UNITS_PER_CM) === 0;
+      ctx.strokeStyle = major ? "rgba(38,50,58,0.10)" : "rgba(38,50,58,0.05)";
+      ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(cw, y); ctx.stroke();
+      ctx.strokeStyle = "#5c6a72"; ctx.lineWidth = major ? 2 : 1;
+      ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(major ? 14 : 8, y); ctx.stroke();
+      if (major && h > 0) { ctx.fillStyle = "#5c6a72"; ctx.fillText(`${h / UNITS_PER_CM}cm`, 18, y); }
+    }
+
+    // ベストライン
+    if (best > 0) {
+      const y = Y(-best);
+      ctx.setLineDash([8, 6]);
+      ctx.strokeStyle = "#d9483b"; ctx.lineWidth = 1.5;
+      ctx.beginPath(); ctx.moveTo(60, y); ctx.lineTo(cw, y); ctx.stroke();
+      ctx.setLineDash([]);
+      ctx.fillStyle = "#d9483b"; ctx.textAlign = "right";
+      ctx.fillText(`ベスト ${fmt(best)}cm`, cw - 10, y - 10);
+      ctx.textAlign = "left";
+    }
+
+    // ワールド座標で描く
+    ctx.setTransform(dpr * scale, 0, 0, dpr * scale, dpr * cw / 2, -camTop * scale * dpr);
+
+    // テーブル
+    ctx.fillStyle = "#5f3a22";
+    ctx.fillRect(-BASE_HALF + 24, 40, BASE_HALF * 2 - 48, 600);
+    ctx.fillStyle = "#9a6440";
+    pathPart(ctx, base); ctx.fill();
+    ctx.strokeStyle = "#5f3a22"; ctx.lineWidth = 3; ctx.stroke();
+    ctx.strokeStyle = "rgba(255,230,200,0.35)"; ctx.lineWidth = 2;
+    for (let i = 0; i < 3; i++) {
+      ctx.beginPath(); ctx.moveTo(-BASE_HALF + 10, 10 + i * 9); ctx.lineTo(BASE_HALF - 10, 12 + i * 9); ctx.stroke();
+    }
+
+    // 積み木
+    for (const b of dynamicBodies()) drawBlock(ctx, b);
+
+    // ねらい中の積み木とガイド
+    if (state === "aim" && aimBody) {
+      Body.setPosition(aimBody, { x: aimX, y: spawnY });
+      Body.setAngle(aimBody, aimAngle);
+      ctx.setLineDash([6, 8]);
+      ctx.strokeStyle = "rgba(38,50,58,0.35)"; ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.moveTo(aimX, aimBody.bounds.max.y + 6); ctx.lineTo(aimX, 0); ctx.stroke();
+      ctx.setLineDash([]);
+      drawBlock(ctx, aimBody, 0.92);
+    }
+
+    // 台の外の目印（落ちたら終わりのライン）
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  }
+
+  function drawNext() {
+    const nc = $("nextCanvas"), c = nc.getContext("2d");
+    c.setTransform(1, 0, 0, 1, 0, 0);
+    c.clearRect(0, 0, nc.width, nc.height);
+    const b = nextShape.make(0, 0);
+    b.blockColor = nextColor; b.shapeId = nextShape.id;
+    const w = b.bounds.max.x - b.bounds.min.x, h = b.bounds.max.y - b.bounds.min.y;
+    const s = Math.min((nc.width - 20) / w, (nc.height - 16) / h, 1.4);
+    c.setTransform(s, 0, 0, s, nc.width / 2 - b.position.x * s, nc.height / 2 - b.position.y * s);
+    drawBlock(c, b);
+    $("nextName").textContent = nextShape.name;
+  }
+
+  // ---- ループ ----
+  const STEP = 1000 / 60;
+  let last = performance.now(), acc = 0, frameN = 0;
+  function loop(t) {
+    acc += Math.min(t - last, 60); last = t;
+    while (acc >= STEP) {
+      Engine.update(engine, STEP);
+      logic();
+      acc -= STEP;
+    }
+    draw();
+    if ((frameN++ & 7) === 0) {
+      liveH = towerTop(state === "falling");
+      setCm($("hNow"), liveH);
+    }
+    requestAnimationFrame(loop);
+  }
+
+  setCm($("hRecord"), record);
+  if (window.matchMedia("(hover: hover)").matches) $("hint").textContent = "マウスで位置を決めて、クリックで落とす";
+  spawn();
+  requestAnimationFrame(loop);
+})();
+</script>
+
+</body></html>

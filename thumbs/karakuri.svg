@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 180">
+        <defs>
+          <radialGradient id="lamp" cx="0.5" cy="0.75" r="0.6"><stop offset="0" stop-color="#4A3A2C"/><stop offset="1" stop-color="#1A2030"/></radialGradient>
+          <pattern id="yosegi" width="20" height="17.32" patternUnits="userSpaceOnUse">
+            <path d="M10 0l10 5.77v11.55L10 11.55 0 17.32V5.77z" fill="#C99A4E"/>
+            <path d="M10 0L0 5.77 10 11.55 20 5.77z" fill="#E8D8B2"/>
+            <path d="M0 5.77v11.55l10-5.77z" fill="#5B3A26"/>
+          </pattern>
+        </defs>
+        <rect width="320" height="180" fill="url(#lamp)"/>
+        <path d="M96 70l64-26 72 18-64 28z" fill="#2E241D"/>
+        <path d="M106 70l54-21 60 15-54 23z" fill="url(#yosegi)"/>
+        <path d="M96 70l72 20v58l-72-22z" fill="#2E241D"/>
+        <path d="M104 78l58 16v44l-58-17z" fill="#8A5130"/>
+        <path d="M108 83l50 14v36l-50-15z" fill="url(#yosegi)"/>
+        <path d="M168 90l64-28v58l-64 28z" fill="#241C17"/>
+        <path d="M176 92l48-21v42l-48 21z" fill="#5B3A26"/>
+        <path d="M176 92l48-21v42l-48 21z" fill="url(#yosegi)" opacity="0.55"/>
+        <path d="M232 92h22" stroke="#D9A650" stroke-width="3" stroke-linecap="round"/>
+        <path d="M246 86l8 6-8 6" fill="none" stroke="#D9A650" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
