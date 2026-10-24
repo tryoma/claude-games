@@ -253,8 +253,51 @@ canvas {
   cursor: pointer;
   align-self: flex-start;
 }
+/* Kitchen (difficulty) picker */
+.levels {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 6px;
+}
+.lv {
+  appearance: none;
+  border: 2px solid var(--sumi);
+  background: transparent;
+  color: var(--sumi);
+  border-radius: 6px;
+  padding: 4px 2px 3px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  cursor: pointer;
+  font-family: var(--body);
+  min-width: 0;
+}
+.lv b { font-family: var(--display); font-weight: 400; font-size: 20px; line-height: 1.2; }
+.lv small { font-size: 10px; min-height: 1.5em; letter-spacing: 0.04em; white-space: nowrap; }
+.lv[aria-checked="true"] { background: var(--noren); color: var(--hinoki); border-color: var(--noren); }
+.lv:disabled { opacity: 0.32; cursor: default; }
+.lv:focus-visible { outline: 3px solid var(--karashi); outline-offset: 2px; }
+.level-info { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 10px; }
+.level-info b { font-family: var(--display); font-weight: 400; font-size: 18px; }
+.level-info span { font-size: 13px; opacity: 0.8; }
+.row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+.row .btn { align-self: auto; }
+.btn.sub { background: transparent; color: var(--noren); box-shadow: inset 0 0 0 2px var(--noren); }
+.btn.sub:hover { background: color-mix(in srgb, var(--noren) 10%, transparent); }
+.how summary { cursor: pointer; font-weight: 700; font-size: 14px; }
+.how[open] summary { margin-bottom: 8px; }
+.how-body { display: flex; flex-direction: column; gap: 10px; }
+.unlock { color: var(--noren); font-weight: 700; font-size: 14px; }
+
+/* Phones and narrow windows: the card sits below the belt instead of covering it */
+@media (max-width: 859px) {
+  .overlay { position: static; background: transparent; padding: 0; }
+  .card { max-width: none; max-height: none; overflow: visible; border-radius: 0; border-top: 2px dashed var(--hinoki-dark); }
+}
 @media (max-width: 520px) {
   .hud { grid-template-columns: 1fr 1fr; }
+  .noren span { padding-block: 6px 10px; }
   .steps { grid-template-columns: 1fr; }
   .stats { grid-template-columns: 1fr 1fr; }
 }
@@ -281,7 +324,13 @@ canvas {
 
     <div class="overlay" id="titleOv">
       <div class="card">
-        <h2>一品も、焦がさず逃さず。</h2>
+        <h2>今日の厨房を選ぶ</h2>
+        <div class="levels" id="levels" role="radiogroup" aria-label="難易度"></div>
+        <div class="level-info"><b id="lvName">まかない</b><span id="lvDesc"></span></div>
+        <div class="row"><button class="btn" id="startBtn" type="button">仕込み開始</button></div>
+        <details class="how" id="how">
+        <summary>遊び方</summary>
+        <div class="how-body">
         <p>食材はベルトに乗って左から流れてきます。持ち場の真上に来た瞬間にクリック（タップ／スペースキー）。食材の上の札が、その食材に必要な工程です。</p>
         <div class="steps">
           <div><b>切る</b>包丁が落ちる。輪が重なった瞬間に。</div>
@@ -289,13 +338,16 @@ canvas {
           <div><b>盛る</b>皿に乗せて完成。トマトや豆腐は焼かない。</div>
         </div>
         <p>必要な工程を全部こなせば「完成」、全部「完璧」なら「絶品」でボーナス。60秒でベルトはどんどん速くなります。</p>
-        <button class="btn" id="startBtn" type="button">仕込み開始</button>
+        <p>「板前」以上の評価で次の厨房が開きます。評価は、出した料理のうち完成させた割合で決まります。</p>
+        </div>
+        </details>
       </div>
     </div>
 
     <div class="overlay" id="resultOv" hidden>
       <div class="card">
         <h2>本日の営業終了</h2>
+        <p id="resLevel"></p>
         <div class="result-score" id="resScore">0</div>
         <span class="rank" id="resRank">見習い</span>
         <span class="newbest" id="resBest" hidden>自己ベスト更新</span>
@@ -310,12 +362,17 @@ canvas {
           <div><span>空振り</span><b id="sWhiff">0</b></div>
           <div><span>最大コンボ</span><b id="sCombo">0</b></div>
         </div>
-        <button class="btn" id="retryBtn" type="button">もう一営業</button>
+        <p class="unlock" id="resUnlock" hidden></p>
+        <div class="row">
+          <button class="btn" id="nextBtn" type="button" hidden>次の厨房へ</button>
+          <button class="btn" id="retryBtn" type="button">もう一営業</button>
+          <button class="btn sub" id="menuBtn" type="button">厨房を選ぶ</button>
+        </div>
       </div>
     </div>
   </div>
 
-  <div class="controls">
+  <div class="controls" id="controls" hidden>
     <button class="hit" id="hitBtn" type="button">トン！</button>
     <div class="side">
       <button class="mute" id="muteBtn" type="button">音：あり</button>
@@ -333,7 +390,8 @@ canvas {
   const Z = [190, 390, 590];           // station x
   const STEP_NAMES = ['切', '焼', '盛'];
   const LIMIT = 60;                    // seconds
-  const WIN = { perfect: 50, great: 95, good: 140 };
+  const WIN_DEFAULT = { perfect: 50, great: 95, good: 140 };
+  let WIN = WIN_DEFAULT;
   const POINTS = { perfect: 300, great: 200, good: 100 };
   const JUDGE_TEXT = { perfect: '完璧!', great: 'いいね', good: 'おしい', miss: 'ミス' };
   const JUDGE_COL = { perfect: '#E3A72A', great: '#4F9A6C', good: '#5E8DBF', miss: '#D04A30' };
@@ -350,15 +408,44 @@ canvas {
     nasu:     { name: 'ナス',   need: [1,1,1], w: 3, from: 30 },
   };
 
+  // 10 kitchens. bpm and spawn chance ramp from the first value to the second over the 60 seconds.
+  const ALL = Object.keys(FOODS);
+  const LEVELS = [
+    { name: 'まかない',   bpm: [80, 90],   p: [0.35, 0.5],  pool: ['onigiri', 'tomato', 'ebi'] },
+    { name: 'ランチ営業', bpm: [86, 98],   p: [0.4, 0.58],  pool: ['onigiri', 'tomato', 'ebi', 'tofu', 'shiitake'] },
+    { name: '定食屋',     bpm: [90, 106],  p: [0.45, 0.65], pool: ['onigiri', 'tomato', 'ebi', 'tofu', 'shiitake', 'salmon'] },
+    { name: '居酒屋',     bpm: [94, 118],  p: [0.5, 0.75],  pool: ['onigiri', 'tomato', 'ebi', 'tofu', 'shiitake', 'salmon', 'steak'] },
+    { name: '料亭',       bpm: [96, 142],  p: [0.5, 0.92],  pool: ALL },
+    { name: '宴会',       bpm: [104, 148], p: [0.6, 0.95],  pool: ALL },
+    { name: '年末の厨房', bpm: [112, 156], p: [0.65, 0.97], pool: ALL },
+    { name: '祭りの屋台', bpm: [120, 166], p: [0.72, 1],    pool: ALL, win: { perfect: 46, great: 88, good: 130 } },
+    { name: '鬼の板場',   bpm: [130, 176], p: [0.8, 1],     pool: ALL, win: { perfect: 42, great: 80, good: 120 } },
+    { name: '神業',       bpm: [140, 190], p: [0.88, 1],    pool: ALL.filter(k => k !== 'onigiri'), win: { perfect: 38, great: 72, good: 110 } },
+  ];
+  const RANKS = ['見習い', '板前', '料理長', '名人'];
+  const KANJI = ['一', '二', '三', '四', '五', '六', '七', '八', '九', '十'];
+  let lv = 0;
+  const L = () => LEVELS[lv];
+
   // ---------- DOM ----------
   const $ = id => document.getElementById(id);
   const cv = $('cv'), ctx = cv.getContext('2d');
   const stage = $('stage'), hitBtn = $('hitBtn');
   const titleOv = $('titleOv'), resultOv = $('resultOv');
 
-  let best = 0;
-  try { best = +localStorage.getItem('timingChefBest') || 0; } catch (e) {}
-  $('hudBest').textContent = best.toLocaleString();
+  // progress: best score and best rank per kitchen, how many kitchens are open, last pick
+  const PKEY = 'timingChefProgress';
+  let prog = { best: Array(10).fill(0), rank: Array(10).fill(-1), open: 1, sel: 0 };
+  try {
+    const saved = JSON.parse(localStorage.getItem(PKEY) || 'null');
+    if (saved && Array.isArray(saved.best)) prog = Object.assign(prog, saved);
+    else {
+      const old = +localStorage.getItem('timingChefBest') || 0;   // score from the single-difficulty version
+      if (old > 0) { prog.best[4] = old; prog.open = 5; prog.sel = 4; }
+    }
+  } catch (e) {}
+  const saveProg = () => { try { localStorage.setItem(PKEY, JSON.stringify(prog)); } catch (e) {} };
+  lv = Math.min(prog.sel || 0, prog.open - 1);
 
   // ---------- canvas sizing ----------
   let scale = 1;
@@ -419,7 +506,7 @@ canvas {
   let beat, lastT, elapsed, bpm, objs, occupied, score, combo, maxCombo, counts, dishes, popups, parts, anim, lastOrder, countdown, shake;
 
   function reset() {
-    beat = -4.6; lastT = performance.now(); elapsed = 0; bpm = 96;
+    beat = -4.6; lastT = performance.now(); elapsed = 0; bpm = L().bpm[0]; WIN = L().win || WIN_DEFAULT;
     objs = []; occupied = new Set();
     score = 0; combo = 0; maxCombo = 0;
     counts = { perfect: 0, great: 0, good: 0, miss: 0, whiff: 0 };
@@ -432,7 +519,7 @@ canvas {
   const objX = o => Z[0] + (beat - (o.n + 2)) * D;
 
   function pickFood(n) {
-    const pool = Object.entries(FOODS).filter(([, f]) => elapsed >= f.from);
+    const pool = Object.entries(FOODS).filter(([k]) => L().pool.includes(k));
     const bag = [];
     pool.forEach(([k, f]) => { for (let i = 0; i < f.w; i++) bag.push(k); });
     for (let i = bag.length - 1; i > 0; i--) { const j = Math.random() * (i + 1) | 0; [bag[i], bag[j]] = [bag[j], bag[i]]; }
@@ -447,8 +534,8 @@ canvas {
 
   function trySpawn(n) {
     if (lastOrder || n < -2) return;
-    const prog = Math.min(1, elapsed / LIMIT);
-    const p = n === -2 ? 1 : 0.5 + 0.42 * prog;
+    const t = Math.min(1, elapsed / LIMIT), [p0, p1] = L().p;
+    const p = n === -2 ? 1 : p0 + (p1 - p0) * t;
     if (Math.random() > p) return;
     const pick = pickFood(n);
     if (!pick) return;
@@ -542,7 +629,7 @@ canvas {
     if (state !== 'play') return;
     if (beat >= 0) {
       elapsed += dt;
-      bpm = 96 + 46 * Math.min(1, elapsed / LIMIT);
+      bpm = L().bpm[0] + (L().bpm[1] - L().bpm[0]) * Math.min(1, elapsed / LIMIT);
     }
     const prev = beat;
     beat += dt / spb();
@@ -830,32 +917,97 @@ canvas {
   }
 
   // ---------- flow ----------
-  function rankFor(s) {
-    if (s >= 75000) return '名人';
-    if (s >= 50000) return '料理長';
-    if (s >= 25000) return '板前';
-    return '見習い';
+  // Rank comes from how many dishes were finished, so it means the same thing in every kitchen.
+  function rankIndex() {
+    const total = dishes.zeppin + dishes.done + dishes.fail;
+    if (!total) return 0;
+    const ok = (dishes.zeppin + dishes.done) / total;
+    const judged = counts.perfect + counts.great + counts.good + counts.miss;
+    const perf = judged ? counts.perfect / judged : 0;
+    if (ok >= 0.95 && perf >= 0.7) return 3;
+    if (ok >= 0.85) return 2;
+    if (ok >= 0.65) return 1;
+    return 0;
+  }
+  const narrow = () => window.matchMedia('(max-width: 859px)').matches;
+  const scrollTo = (el, block) => { if (narrow()) el.scrollIntoView({ block, behavior: reduceMotion ? 'auto' : 'smooth' }); };
+
+  function describe(i) {
+    const d = LEVELS[i];
+    return `テンポ ${d.bpm[0]}→${d.bpm[1]}・食材${d.pool.length}種` + (d.win ? '・判定きびしめ' : '');
+  }
+  function renderLevels() {
+    $('levels').innerHTML = LEVELS.map((d, i) => {
+      const open = i < prog.open, r = prog.rank[i];
+      const label = !open ? '未開放' : r >= 0 ? RANKS[r] : '';
+      return `<button class="lv" type="button" role="radio" id="lv${i}" aria-checked="${i === lv}" ${open ? '' : 'disabled'} aria-label="${KANJI[i]}の厨房 ${d.name}${label ? '、' + label : ''}"><b>${KANJI[i]}</b><small>${label}</small></button>`;
+    }).join('');
+    $('lvName').textContent = `${KANJI[lv]}の厨房　${L().name}`;
+    $('lvDesc').textContent = describe(lv) + (prog.best[lv] ? `・ベスト ${prog.best[lv].toLocaleString()}` : '');
+    $('hudBest').textContent = prog.best[lv].toLocaleString();
+  }
+  $('levels').addEventListener('click', e => {
+    const b = e.target.closest('.lv');
+    if (!b || b.disabled) return;
+    lv = +b.id.slice(2); prog.sel = lv; saveProg(); renderLevels();
+  });
+  $('levels').addEventListener('keydown', e => {
+    const d = e.key === 'ArrowRight' || e.key === 'ArrowDown' ? 1 : e.key === 'ArrowLeft' || e.key === 'ArrowUp' ? -1 : 0;
+    if (!d) return;
+    e.preventDefault();
+    lv = Math.max(0, Math.min(prog.open - 1, lv + d)); prog.sel = lv; saveProg(); renderLevels();
+    $('lv' + lv).focus();
+  });
+
+  function seedDemo() {
+    beat = 3;
+    objs = [
+      { type: 'salmon', n: 1.6, need: [1,1,1], ev: [0,0,0], res: ['perfect', 'perfect', null], gone: true },
+      { type: 'tomato', n: 0.1, need: [1,0,1], ev: [0,0,0], res: ['great', null, 'perfect'], gone: true },
+      { type: 'ebi', n: 2.9, need: [0,1,1], ev: [0,0,0], res: [null, null, null], gone: true },
+    ];
+    popups = []; parts = []; score = 0; combo = 0; elapsed = 0;
   }
   function start() {
     ensureAudio();
     reset();
     state = 'play';
-    titleOv.hidden = true; resultOv.hidden = true;
-    stage.focus?.();
+    titleOv.hidden = true; resultOv.hidden = true; $('controls').hidden = false;
+    scrollTo(document.querySelector('.hud'), 'start');
+  }
+  function toTitle() {
+    state = 'title';
+    seedDemo();
+    resultOv.hidden = true; titleOv.hidden = false; $('controls').hidden = true;
+    renderLevels();
+    scrollTo(titleOv, 'nearest');
+    $('startBtn').focus({ preventScroll: true });
   }
   function endGame() {
     state = 'result';
-    const isBest = score > best;
-    if (isBest) { best = score; try { localStorage.setItem('timingChefBest', String(best)); } catch (e) {} }
-    $('hudBest').textContent = best.toLocaleString();
+    $('controls').hidden = true;
+    const r = rankIndex();
+    const isBest = score > prog.best[lv];
+    if (isBest) prog.best[lv] = score;
+    prog.rank[lv] = Math.max(prog.rank[lv], r);
+    let unlocked = false;
+    if (r >= 1 && lv + 1 < LEVELS.length && prog.open < lv + 2) { prog.open = lv + 2; unlocked = true; }
+    saveProg();
+    $('hudBest').textContent = prog.best[lv].toLocaleString();
+    $('resLevel').textContent = `${KANJI[lv]}の厨房　${L().name}`;
     $('resScore').textContent = score.toLocaleString();
-    $('resRank').textContent = rankFor(score);
+    $('resRank').textContent = RANKS[r];
     $('resBest').hidden = !isBest || score === 0;
+    $('resUnlock').hidden = !unlocked;
+    if (unlocked) $('resUnlock').textContent = `${KANJI[lv + 1]}の厨房「${LEVELS[lv + 1].name}」が開きました`;
+    else if (r === 0 && lv + 1 >= prog.open && lv + 1 < LEVELS.length) { $('resUnlock').hidden = false; $('resUnlock').textContent = '「板前」以上の評価で次の厨房が開きます'; }
+    $('nextBtn').hidden = !(lv + 1 < prog.open);
     $('sZeppin').textContent = dishes.zeppin; $('sDone').textContent = dishes.done; $('sFail').textContent = dishes.fail;
     $('sPerfect').textContent = counts.perfect; $('sGreat').textContent = counts.great; $('sGood').textContent = counts.good;
     $('sMiss').textContent = counts.miss; $('sWhiff').textContent = counts.whiff; $('sCombo').textContent = maxCombo;
     resultOv.hidden = false;
-    $('retryBtn').focus();
+    scrollTo(resultOv, 'nearest');
+    ($('nextBtn').hidden ? $('retryBtn') : $('nextBtn')).focus({ preventScroll: true });
   }
 
   // ---------- input ----------
@@ -877,6 +1029,8 @@ canvas {
   });
   $('startBtn').addEventListener('click', start);
   $('retryBtn').addEventListener('click', start);
+  $('nextBtn').addEventListener('click', () => { lv++; prog.sel = lv; saveProg(); renderLevels(); start(); });
+  $('menuBtn').addEventListener('click', toTitle);
   [titleOv, resultOv].forEach(ov => ov.addEventListener('pointerdown', e => e.stopPropagation()));
   $('muteBtn').addEventListener('click', () => {
     muted = !muted;
@@ -892,12 +1046,8 @@ canvas {
     }
   }
   // seed title belt with a few prepared dishes so the first frame shows what the game looks like
-  beat = 3;
-  objs = [
-    { type: 'salmon', n: 1.6, need: [1,1,1], ev: [0,0,0], res: ['perfect', 'perfect', null], gone: true },
-    { type: 'tomato', n: 0.1, need: [1,0,1], ev: [0,0,0], res: ['great', null, 'perfect'], gone: true },
-    { type: 'ebi', n: 2.9, need: [0,1,1], ev: [0,0,0], res: [null, null, null], gone: true },
-  ];
+  seedDemo();
+  renderLevels();
 
   function loop(now) {
     if (state === 'title') { lastT = now; demoFrame(now); }
