@@ -1,0 +1,446 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>藍のブロック崩し</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DotGothic16&display=swap">
+<style>
+/* Layout: one centered column — HUD strip, 3:4 playfield, control row. Single deliberate night-indigo look. */
+:root {
+  --ai: #101a33;        /* 藍 page ground */
+  --ai-deep: #0a1124;   /* playfield */
+  --line: #2a3a63;
+  --fg: #e9edf7;
+  --muted: #8d9bc2;
+  --shu: #e2553a;       /* 朱 accent */
+  --font-pixel: "DotGothic16", "Hiragino Kaku Gothic ProN", "Yu Gothic", system-ui, sans-serif;
+  color-scheme: dark;
+}
+html, body { height: 100%; }
+body {
+  background: var(--ai);
+  color: var(--fg);
+  font-family: var(--font-pixel);
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 10px;
+  padding-block: 12px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  box-sizing: border-box;
+  overflow: hidden;
+  -webkit-user-select: none; user-select: none;
+}
+.wrap {
+  width: min(100%, 480px, calc((100dvh - 215px) * 0.75));
+  display: flex; flex-direction: column; gap: 8px;
+}
+.back { align-self: flex-start; font-size: .75rem; letter-spacing: .06em; color: var(--muted); text-decoration: none; }
+.back:hover { color: var(--fg); }
+.back:focus-visible { outline: 2px solid var(--shu); outline-offset: 2px; }
+h1 { margin: 0; font-size: 1.15rem; font-weight: 400; letter-spacing: .12em; display: flex; justify-content: space-between; align-items: baseline; }
+h1 small { color: var(--muted); font-size: .75rem; letter-spacing: .05em; }
+.hud { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
+.hud div { display: flex; flex-direction: column; gap: 2px; }
+.hud span { color: var(--muted); font-size: .68rem; letter-spacing: .1em; }
+.hud b { font-weight: 400; font-size: 1.05rem; font-variant-numeric: tabular-nums; }
+#lives { color: var(--shu); letter-spacing: .15em; }
+canvas {
+  display: block; width: 100%; aspect-ratio: 3 / 4; max-width: 100%;
+  background: var(--ai-deep);
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  touch-action: none; cursor: none;
+}
+.controls { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.controls p { margin: 0; flex: 1; min-width: 0; color: var(--muted); font-size: .72rem; line-height: 1.5; }
+button {
+  font: inherit; font-size: .8rem; color: var(--fg);
+  background: transparent; border: 1px solid var(--line); border-radius: 3px;
+  padding: 6px 12px; cursor: pointer;
+}
+button:hover { border-color: var(--muted); }
+.diff { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+.diff span { color: var(--muted); font-size: .68rem; letter-spacing: .1em; margin-right: 2px; }
+.diff em { font-style: normal; color: var(--muted); font-size: .65rem; margin-left: auto; }
+.diff button { padding: 4px 10px; font-size: .75rem; }
+.diff button[aria-pressed="true"] { background: var(--shu); border-color: var(--shu); color: #fff; }
+button:focus-visible { outline: 2px solid var(--shu); outline-offset: 2px; }
+</style>
+
+<div class="wrap">
+  <a href="../" class="back">← あそびの棚</a>
+  <h1>藍のブロック崩し <small>BREAKOUT</small></h1>
+  <div class="hud">
+    <div><span>スコア</span><b id="score">0</b></div>
+    <div><span>ステージ</span><b id="stage">1</b></div>
+    <div><span>残機</span><b id="lives">●●●</b></div>
+    <div><span>ハイスコア</span><b id="best">0</b></div>
+  </div>
+  <div class="diff" role="group" aria-label="難易度">
+    <span>難易度</span>
+    <button type="button" id="dEasy" data-d="easy" title="残機5・遅いボール・広いパドル・アイテム多め">やさしい</button>
+    <button type="button" id="dNormal" data-d="normal" title="残機3・標準">ふつう</button>
+    <button type="button" id="dHard" data-d="hard" title="残機2・速いボール・狭いパドル・アイテム少なめ">むずかしい</button>
+    <em>変更するとはじめから</em>
+  </div>
+  <canvas id="c" aria-label="ブロック崩しのゲーム画面"></canvas>
+  <div class="controls">
+    <p>マウス・指・←→キーで操作／クリック・スペースで発射／P で一時停止</p>
+    <button id="pauseBtn" type="button">一時停止</button>
+    <button id="soundBtn" type="button">音：オン</button>
+  </div>
+</div>
+
+<script>
+(() => {
+  const W = 480, H = 640;
+  const cv = document.getElementById('c');
+  const ctx = cv.getContext('2d');
+  const $ = id => document.getElementById(id);
+
+  function resize() {
+    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+    cv.width = W * dpr; cv.height = H * dpr;
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  }
+  resize();
+  window.addEventListener('resize', resize);
+
+  // 伝統色のブロック
+  const COLORS = {
+    '1': '#e2553a', // 朱
+    '2': '#f0a830', // 山吹
+    '3': '#7bb35a', // 若竹
+    '4': '#5ea0d8', // 空色
+    '5': '#e796ad', // 桜
+    'S': '#a9b2c6'  // 鋼（2回）
+  };
+  const LEVELS = [
+    ["1111111111","2222222222","3333333333","4444444444","5555555555"],
+    ["S1S1S1S1S1","2222222222",".33333333.","..444444..","...5555..."],
+    ["1.2.3.4.5.",".1.2.3.4.5","5.4.3.2.1.",".5.4.3.2.1","SSSSSSSSSS","2222222222"],
+    [".55....55.","5555..5555","5555555555",".55555555.","..555555..","...5555...","....55...."],
+    ["SSSSSSSSSS","1111111111","S........S","S22222222S","S33333333S","SSSSSSSSSS"],
+    ["....11....","...2222...","..333333..",".44444444.","5555555555","SSSSSSSSSS"],
+    ["....SS....","...1111...","..222222..",".33333333.","..444444..","...5555...","....SS...."],
+    ["S11111111S","S........S","S.S4444S.S","S.S5555S.S","S........S","SSSS..SSSS"],
+    ["11........","2222......","333333....","44444444..","5555555555","..44444444","....333333","......2222"],
+    ["SSSSSSSSSS","S11111111S","S22222222S","S33333333S","S44444444S","S55555555S","SSSSSSSSSS"]
+  ];
+  const DIFF = {
+    easy:   { speed: 0.78, paddle: 112, lives: 5, drop: 0.22, accel: 1.008 },
+    normal: { speed: 1.0,  paddle: 84,  lives: 3, drop: 0.12, accel: 1.015 },
+    hard:   { speed: 1.22, paddle: 64,  lives: 2, drop: 0.07, accel: 1.025 }
+  };
+  let diffKey = 'normal';
+  try { const d = localStorage.getItem('ai-breakout-diff'); if (DIFF[d]) diffKey = d; } catch (e) {}
+  const D = () => DIFF[diffKey];
+  const COLS = 10, BX = 24, BGAP = 4, BH = 18, BY = 70;
+  const BW = (W - BX * 2 - BGAP * (COLS - 1)) / COLS;
+  const R = 7;
+
+  let bricks, balls, caps, parts, paddle, score, lives, stage, state, best, slowT, wideT, keys = {};
+  let soundOn = true, actx = null;
+
+  function loadBest() {
+    try { best = +localStorage.getItem('ai-breakout-best-' + diffKey) || 0; } catch (e) { best = 0; }
+  }
+
+  function beep(f, d = 0.06, type = 'square', v = 0.05) {
+    if (!soundOn) return;
+    try {
+      actx = actx || new (window.AudioContext || window.webkitAudioContext)();
+      const o = actx.createOscillator(), g = actx.createGain();
+      o.type = type; o.frequency.value = f;
+      g.gain.setValueAtTime(v, actx.currentTime);
+      g.gain.exponentialRampToValueAtTime(0.0001, actx.currentTime + d);
+      o.connect(g).connect(actx.destination);
+      o.start(); o.stop(actx.currentTime + d);
+    } catch (e) {}
+  }
+
+  function baseSpeed() { return Math.min(320 + (stage - 1) * 22, 580) * D().speed; }
+
+  function buildLevel() {
+    const map = LEVELS[(stage - 1) % LEVELS.length];
+    bricks = [];
+    map.forEach((row, r) => [...row].forEach((ch, c) => {
+      if (ch === '.') return;
+      bricks.push({ x: BX + c * (BW + BGAP), y: BY + r * (BH + BGAP), w: BW, h: BH,
+        ch, hp: ch === 'S' ? 2 : 1, alive: true });
+    }));
+  }
+
+  function resetBall() {
+    balls = [{ x: paddle.x, y: paddle.y - R - 1, vx: 0, vy: 0, stuck: true, trail: [] }];
+    caps = []; slowT = 0; wideT = 0; paddle.w = D().paddle;
+    state = 'ready';
+  }
+
+  function newGame() {
+    score = 0; lives = D().lives; stage = 1; parts = []; loadBest();
+    paddle = { x: W / 2, y: H - 44, w: D().paddle, h: 12, tx: W / 2 };
+    $('pauseBtn').textContent = '一時停止';
+    buildLevel(); resetBall(); updateHud();
+  }
+
+  function launch() {
+    if (state === 'over') { newGame(); return; }
+    if (state === 'clear') { stage++; buildLevel(); resetBall(); updateHud(); return; }
+    if (state !== 'ready') return;
+    const s = baseSpeed(), a = (Math.random() * 0.6 - 0.3);
+    balls.forEach(b => { b.stuck = false; b.vx = s * Math.sin(a); b.vy = -s * Math.cos(a); });
+    state = 'play';
+    beep(660, 0.08);
+  }
+
+  function togglePause() {
+    if (state === 'play') state = 'pause';
+    else if (state === 'pause') state = 'play';
+    $('pauseBtn').textContent = state === 'pause' ? '再開' : '一時停止';
+  }
+
+  function updateHud() {
+    $('score').textContent = score;
+    $('stage').textContent = stage;
+    $('lives').textContent = '●'.repeat(Math.max(lives, 0)) || '—';
+    if (score > best) { best = score; try { localStorage.setItem('ai-breakout-best-' + diffKey, best); } catch (e) {} }
+    $('best').textContent = best;
+  }
+
+  function burst(x, y, color, n = 10) {
+    for (let i = 0; i < n; i++) {
+      const a = Math.random() * Math.PI * 2, s = 40 + Math.random() * 160;
+      parts.push({ x, y, vx: Math.cos(a) * s, vy: Math.sin(a) * s, life: 0.5 + Math.random() * 0.3, color });
+    }
+  }
+
+  function hitBrick(br) {
+    br.hp--;
+    if (br.hp > 0) { beep(300, 0.05, 'triangle'); return; }
+    br.alive = false;
+    score += (br.ch === 'S' ? 30 : 10) * stage;
+    burst(br.x + br.w / 2, br.y + br.h / 2, COLORS[br.ch]);
+    beep(440 + Math.random() * 300, 0.05);
+    if (Math.random() < D().drop) {
+      const t = ['W', 'M', 'L'][Math.floor(Math.random() * 3)];
+      caps.push({ x: br.x + br.w / 2, y: br.y + br.h / 2, t });
+    }
+    updateHud();
+    if (!bricks.some(b => b.alive)) {
+      state = 'clear'; score += 100 * stage; updateHud();
+      beep(880, 0.25, 'triangle', 0.07);
+    }
+  }
+
+  function stepBall(b, dt) {
+    const sp = Math.hypot(b.vx, b.vy);
+    const n = Math.max(1, Math.ceil(sp * dt / 4));
+    const h = dt / n;
+    for (let i = 0; i < n; i++) {
+      b.x += b.vx * h; b.y += b.vy * h;
+      if (b.x < R) { b.x = R; b.vx = Math.abs(b.vx); beep(220, 0.03); }
+      if (b.x > W - R) { b.x = W - R; b.vx = -Math.abs(b.vx); beep(220, 0.03); }
+      if (b.y < R) { b.y = R; b.vy = Math.abs(b.vy); beep(220, 0.03); }
+
+      // パドル
+      const p = paddle;
+      if (b.vy > 0 && b.y + R >= p.y && b.y - R <= p.y + p.h && b.x >= p.x - p.w / 2 - R && b.x <= p.x + p.w / 2 + R) {
+        const rel = Math.max(-1, Math.min(1, (b.x - p.x) / (p.w / 2)));
+        const ang = rel * (Math.PI / 3);
+        const s = Math.min(sp * D().accel, baseSpeed() * 1.35);
+        b.vx = s * Math.sin(ang); b.vy = -s * Math.cos(ang);
+        b.y = p.y - R;
+        beep(330, 0.05);
+      }
+
+      // ブロック
+      for (const br of bricks) {
+        if (!br.alive) continue;
+        const cx = Math.max(br.x, Math.min(b.x, br.x + br.w));
+        const cy = Math.max(br.y, Math.min(b.y, br.y + br.h));
+        const dx = b.x - cx, dy = b.y - cy;
+        if (dx * dx + dy * dy < R * R) {
+          if (Math.abs(dx) > Math.abs(dy)) {
+            b.vx = dx > 0 ? Math.abs(b.vx) : -Math.abs(b.vx);
+            b.x = dx > 0 ? br.x + br.w + R : br.x - R;
+          } else {
+            const down = dy > 0 || (dy === 0 && b.vy < 0);
+            b.vy = down ? Math.abs(b.vy) : -Math.abs(b.vy);
+            b.y = down ? br.y + br.h + R : br.y - R;
+          }
+          hitBrick(br);
+          break;
+        }
+      }
+      if (state !== 'play') return;
+    }
+  }
+
+  function update(dt) {
+    // パドル移動
+    const kd = (keys.ArrowRight || keys.d ? 1 : 0) - (keys.ArrowLeft || keys.a ? 1 : 0);
+    if (kd) paddle.tx = paddle.x + kd * 560 * dt;
+    paddle.x += (paddle.tx - paddle.x) * Math.min(1, dt * 25);
+    paddle.w += ((wideT > 0 ? D().paddle * 1.55 : D().paddle) - paddle.w) * Math.min(1, dt * 8);
+    paddle.x = Math.max(paddle.w / 2, Math.min(W - paddle.w / 2, paddle.x));
+    paddle.tx = Math.max(paddle.w / 2, Math.min(W - paddle.w / 2, paddle.tx));
+
+    for (let i = parts.length - 1; i >= 0; i--) {
+      const q = parts[i]; q.x += q.vx * dt; q.y += q.vy * dt; q.vy += 300 * dt; q.life -= dt;
+      if (q.life <= 0) parts.splice(i, 1);
+    }
+
+    if (state === 'ready') { balls[0].x = paddle.x; balls[0].y = paddle.y - R - 1; return; }
+    if (state !== 'play') return;
+
+    if (wideT > 0) wideT -= dt;
+    const slowF = slowT > 0 ? 0.6 : 1;
+    if (slowT > 0) slowT -= dt;
+
+    for (const b of balls) {
+      stepBall(b, dt * slowF);
+      b.trail.push({ x: b.x, y: b.y }); if (b.trail.length > 8) b.trail.shift();
+      if (state !== 'play') return;
+    }
+    balls = balls.filter(b => b.y - R < H);
+
+    for (let i = caps.length - 1; i >= 0; i--) {
+      const c = caps[i]; c.y += 150 * dt;
+      if (c.y > paddle.y - 8 && c.y < paddle.y + paddle.h + 8 && Math.abs(c.x - paddle.x) < paddle.w / 2 + 14) {
+        caps.splice(i, 1); beep(990, 0.12, 'triangle');
+        if (c.t === 'W') wideT = 12;
+        if (c.t === 'L') slowT = 8;
+        if (c.t === 'M' && balls.length) {
+          const s = balls[0];
+          const sp = Math.hypot(s.vx, s.vy);
+          [-0.5, 0.5].forEach(a => balls.push({ x: s.x, y: s.y, vx: sp * Math.sin(a), vy: -sp * Math.cos(a), stuck: false, trail: [] }));
+        }
+      } else if (c.y > H + 20) caps.splice(i, 1);
+    }
+
+    if (!balls.length) {
+      lives--; updateHud();
+      beep(140, 0.3, 'sawtooth', 0.06);
+      if (lives <= 0) { state = 'over'; }
+      else resetBall();
+    }
+  }
+
+  function roundRect(x, y, w, h, r) {
+    ctx.beginPath();
+    ctx.moveTo(x + r, y); ctx.arcTo(x + w, y, x + w, y + h, r); ctx.arcTo(x + w, y + h, x, y + h, r);
+    ctx.arcTo(x, y + h, x, y, r); ctx.arcTo(x, y, x + w, y, r); ctx.closePath();
+  }
+
+  const CAP = { W: ['#f0a830', '幅'], M: ['#5ea0d8', '多'], L: ['#7bb35a', '遅'] };
+
+  function draw() {
+    ctx.fillStyle = '#0a1124'; ctx.fillRect(0, 0, W, H);
+    // 青海波風の淡い背景
+    ctx.strokeStyle = 'rgba(94,160,216,0.06)'; ctx.lineWidth = 1;
+    for (let y = 0; y < H + 30; y += 30) for (let x = (y / 30 % 2) * 30; x < W + 60; x += 60)
+      for (let k = 1; k <= 3; k++) { ctx.beginPath(); ctx.arc(x, y, k * 9, Math.PI, 0); ctx.stroke(); }
+
+    for (const br of bricks) {
+      if (!br.alive) continue;
+      const col = COLORS[br.ch];
+      ctx.fillStyle = col; roundRect(br.x, br.y, br.w, br.h, 3); ctx.fill();
+      ctx.fillStyle = 'rgba(255,255,255,0.28)'; ctx.fillRect(br.x + 3, br.y + 2, br.w - 6, 3);
+      ctx.fillStyle = 'rgba(0,0,0,0.22)'; ctx.fillRect(br.x + 3, br.y + br.h - 4, br.w - 6, 2);
+      if (br.ch === 'S' && br.hp === 1) {
+        ctx.strokeStyle = 'rgba(10,17,36,0.8)'; ctx.lineWidth = 1.5;
+        ctx.beginPath(); ctx.moveTo(br.x + br.w * 0.3, br.y + 2); ctx.lineTo(br.x + br.w * 0.5, br.y + br.h / 2);
+        ctx.lineTo(br.x + br.w * 0.42, br.y + br.h - 2); ctx.stroke();
+      }
+    }
+
+    for (const q of parts) {
+      ctx.globalAlpha = Math.max(0, q.life / 0.8); ctx.fillStyle = q.color; ctx.fillRect(q.x - 2, q.y - 2, 4, 4);
+    }
+    ctx.globalAlpha = 1;
+
+    ctx.font = '13px "DotGothic16", sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    for (const c of caps) {
+      ctx.fillStyle = CAP[c.t][0]; roundRect(c.x - 15, c.y - 8, 30, 16, 8); ctx.fill();
+      ctx.fillStyle = '#0a1124'; ctx.fillText(CAP[c.t][1], c.x, c.y + 1);
+    }
+
+    // パドル
+    const p = paddle;
+    ctx.fillStyle = wideT > 0 ? '#f0a830' : '#e9edf7';
+    roundRect(p.x - p.w / 2, p.y, p.w, p.h, 6); ctx.fill();
+    ctx.fillStyle = '#e2553a'; ctx.fillRect(p.x - 6, p.y + 3, 12, p.h - 6);
+
+    for (const b of balls) {
+      b.trail.forEach((t, i) => {
+        ctx.globalAlpha = (i + 1) / b.trail.length * 0.25;
+        ctx.fillStyle = slowT > 0 ? '#7bb35a' : '#e9edf7';
+        ctx.beginPath(); ctx.arc(t.x, t.y, R * (i + 1) / b.trail.length, 0, Math.PI * 2); ctx.fill();
+      });
+      ctx.globalAlpha = 1; ctx.fillStyle = '#ffffff';
+      ctx.beginPath(); ctx.arc(b.x, b.y, R, 0, Math.PI * 2); ctx.fill();
+    }
+
+    const msg = {
+      ready: ['ステージ ' + stage + (stage <= LEVELS.length ? ' / ' + LEVELS.length : ''), 'クリック・タップ・スペースで発射'],
+      pause: ['一時停止中', 'P キーかボタンで再開'],
+      clear: ['ステージ ' + stage + ' クリア', 'ボーナス +' + 100 * stage + '　クリックで次へ'],
+      over: ['ゲームオーバー', 'スコア ' + score + '　クリックでもう一度']
+    }[state];
+    if (msg) {
+      if (state !== 'ready') { ctx.fillStyle = 'rgba(10,17,36,0.72)'; ctx.fillRect(0, 0, W, H); }
+      ctx.fillStyle = state === 'over' ? '#e2553a' : '#e9edf7';
+      ctx.font = '34px "DotGothic16", sans-serif'; ctx.fillText(msg[0], W / 2, H * 0.6);
+      ctx.fillStyle = '#8d9bc2'; ctx.font = '16px "DotGothic16", sans-serif'; ctx.fillText(msg[1], W / 2, H * 0.6 + 40);
+    }
+    if (state === 'play' && (wideT > 0 || slowT > 0)) {
+      ctx.textAlign = 'left'; ctx.font = '13px "DotGothic16", sans-serif'; ctx.fillStyle = '#8d9bc2';
+      const s = [wideT > 0 ? '幅 ' + Math.ceil(wideT) + '秒' : '', slowT > 0 ? '遅 ' + Math.ceil(slowT) + '秒' : ''].filter(Boolean).join('　');
+      ctx.fillText(s, 12, H - 14);
+    }
+  }
+
+  let last = performance.now();
+  function loop(now) {
+    const dt = Math.min((now - last) / 1000, 1 / 30); last = now;
+    update(dt); draw();
+    requestAnimationFrame(loop);
+  }
+
+  // 入力
+  function toGameX(clientX) {
+    const r = cv.getBoundingClientRect();
+    return (clientX - r.left) * W / r.width;
+  }
+  cv.addEventListener('pointermove', e => { paddle.tx = toGameX(e.clientX); });
+  cv.addEventListener('pointerdown', e => {
+    paddle.tx = toGameX(e.clientX);
+    if (state === 'pause') togglePause(); else launch();
+  });
+  window.addEventListener('keydown', e => {
+    keys[e.key] = true;
+    if (e.key === ' ') { e.preventDefault(); if (state === 'play' || state === 'pause') togglePause(); else launch(); }
+    if (e.key === 'p' || e.key === 'P') togglePause();
+    if (e.key.startsWith('Arrow')) e.preventDefault();
+  });
+  window.addEventListener('keyup', e => { keys[e.key] = false; });
+  document.addEventListener('visibilitychange', () => { if (document.hidden && state === 'play') togglePause(); });
+  $('pauseBtn').addEventListener('click', e => { togglePause(); e.currentTarget.blur(); });
+  $('soundBtn').addEventListener('click', e => {
+    soundOn = !soundOn; e.currentTarget.textContent = '音：' + (soundOn ? 'オン' : 'オフ'); e.currentTarget.blur();
+  });
+
+  const diffBtns = document.querySelectorAll('.diff button');
+  function syncDiff() { diffBtns.forEach(b => b.setAttribute('aria-pressed', b.dataset.d === diffKey)); }
+  diffBtns.forEach(b => b.addEventListener('click', () => {
+    diffKey = b.dataset.d;
+    try { localStorage.setItem('ai-breakout-diff', diffKey); } catch (e) {}
+    syncDiff(); newGame(); b.blur();
+  }));
+  syncDiff();
+
+  newGame();
+  requestAnimationFrame(loop);
+})();
+</script>
+</body></html>
